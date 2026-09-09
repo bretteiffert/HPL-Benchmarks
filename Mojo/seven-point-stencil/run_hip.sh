@@ -13,6 +13,6 @@ BLOCK_CONFIGS=(
 
 for cfg in "${BLOCK_CONFIGS[@]}"; do
   read -r bx by bz <<< "$cfg"
-  mamba run -n mojo mojo "$SCRIPT_DIR/laplacian.mojo" \
+  pixi run mojo "$SCRIPT_DIR/laplacian.mojo" \
     "$GRID" "$GRID" "$GRID" "$bx" "$by" "$bz";
 done
