@@ -1,0 +1,270 @@
+Backend: CUDA
+natoms: 32
+ngauss: 3
+quartets: 139656
+2e- energy=121.9844021961692988
+Hartree-Fock kernel: 0.542454 ms
+Hartree-Fock kernel: 0.410214 ms
+Hartree-Fock kernel: 0.388774 ms
+Hartree-Fock kernel: 0.397723 ms
+Hartree-Fock kernel: 0.395684 ms
+Hartree-Fock kernel: 0.404483 ms
+Hartree-Fock kernel: 0.395883 ms
+Hartree-Fock kernel: 0.400024 ms
+Hartree-Fock kernel: 0.396893 ms
+Hartree-Fock kernel: 0.570716 ms
+Backend: CUDA
+natoms: 32
+ngauss: 3
+quartets: 139656
+2e- energy=121.9844021961693130
+Hartree-Fock kernel: 0.397593 ms
+Hartree-Fock kernel: 0.404694 ms
+Hartree-Fock kernel: 0.406713 ms
+Hartree-Fock kernel: 0.397254 ms
+Hartree-Fock kernel: 0.407234 ms
+Hartree-Fock kernel: 0.392763 ms
+Hartree-Fock kernel: 0.400064 ms
+Hartree-Fock kernel: 0.401653 ms
+Hartree-Fock kernel: 0.408124 ms
+Hartree-Fock kernel: 0.554135 ms
+Backend: CUDA
+natoms: 32
+ngauss: 3
+quartets: 139656
+2e- energy=121.9844021961693414
+Hartree-Fock kernel: 0.398133 ms
+Hartree-Fock kernel: 0.426523 ms
+Hartree-Fock kernel: 0.397634 ms
+Hartree-Fock kernel: 0.589755 ms
+Hartree-Fock kernel: 0.396723 ms
+Hartree-Fock kernel: 0.586475 ms
+Hartree-Fock kernel: 0.404093 ms
+Hartree-Fock kernel: 0.583995 ms
+Hartree-Fock kernel: 0.396754 ms
+Hartree-Fock kernel: 0.388133 ms
+Backend: CUDA
+natoms: 64
+ngauss: 3
+quartets: 2164240
+2e- energy=419.4081877348058924
+Hartree-Fock kernel: 3.159986 ms
+Hartree-Fock kernel: 3.205076 ms
+Hartree-Fock kernel: 3.199226 ms
+Hartree-Fock kernel: 3.163396 ms
+Hartree-Fock kernel: 3.212447 ms
+Hartree-Fock kernel: 3.184836 ms
+Hartree-Fock kernel: 3.214367 ms
+Hartree-Fock kernel: 3.183676 ms
+Hartree-Fock kernel: 3.170336 ms
+Hartree-Fock kernel: 3.206007 ms
+Backend: CUDA
+natoms: 64
+ngauss: 3
+quartets: 2164240
+2e- energy=419.4081877348058924
+Hartree-Fock kernel: 3.152665 ms
+Hartree-Fock kernel: 3.270307 ms
+Hartree-Fock kernel: 3.256067 ms
+Hartree-Fock kernel: 3.192016 ms
+Hartree-Fock kernel: 3.213646 ms
+Hartree-Fock kernel: 3.186187 ms
+Hartree-Fock kernel: 3.205616 ms
+Hartree-Fock kernel: 3.203017 ms
+Hartree-Fock kernel: 3.149445 ms
+Hartree-Fock kernel: 3.220127 ms
+Backend: CUDA
+natoms: 64
+ngauss: 3
+quartets: 2164240
+2e- energy=419.4081877348057787
+Hartree-Fock kernel: 3.166566 ms
+Hartree-Fock kernel: 3.278287 ms
+Hartree-Fock kernel: 3.246147 ms
+Hartree-Fock kernel: 3.183546 ms
+Hartree-Fock kernel: 3.209446 ms
+Hartree-Fock kernel: 3.179787 ms
+Hartree-Fock kernel: 3.203966 ms
+Hartree-Fock kernel: 3.196257 ms
+Hartree-Fock kernel: 3.173106 ms
+Hartree-Fock kernel: 3.204977 ms
+Backend: CUDA
+natoms: 128
+ngauss: 3
+quartets: 34084896
+2e- energy=1299.8296873455688001
+Hartree-Fock kernel: 24.435603 ms
+Hartree-Fock kernel: 24.440982 ms
+Hartree-Fock kernel: 24.604294 ms
+Hartree-Fock kernel: 24.589984 ms
+Hartree-Fock kernel: 24.602794 ms
+Hartree-Fock kernel: 24.585124 ms
+Hartree-Fock kernel: 24.578653 ms
+Hartree-Fock kernel: 24.606304 ms
+Hartree-Fock kernel: 24.583744 ms
+Hartree-Fock kernel: 24.615254 ms
+Backend: CUDA
+natoms: 128
+ngauss: 3
+quartets: 34084896
+2e- energy=1299.8296873455688001
+Hartree-Fock kernel: 24.426742 ms
+Hartree-Fock kernel: 24.523193 ms
+Hartree-Fock kernel: 24.566354 ms
+Hartree-Fock kernel: 24.621064 ms
+Hartree-Fock kernel: 24.578934 ms
+Hartree-Fock kernel: 24.595514 ms
+Hartree-Fock kernel: 24.594854 ms
+Hartree-Fock kernel: 24.461193 ms
+Hartree-Fock kernel: 24.521243 ms
+Hartree-Fock kernel: 24.594814 ms
+Backend: CUDA
+natoms: 128
+ngauss: 3
+quartets: 34084896
+2e- energy=1299.8296873455690275
+Hartree-Fock kernel: 24.423942 ms
+Hartree-Fock kernel: 24.489113 ms
+Hartree-Fock kernel: 24.553853 ms
+Hartree-Fock kernel: 24.600203 ms
+Hartree-Fock kernel: 24.583364 ms
+Hartree-Fock kernel: 24.611814 ms
+Hartree-Fock kernel: 24.579454 ms
+Hartree-Fock kernel: 24.581633 ms
+Hartree-Fock kernel: 24.601324 ms
+Hartree-Fock kernel: 24.591774 ms
+Backend: CUDA
+natoms: 256
+ngauss: 3
+quartets: 541089856
+2e- energy=4204.5405260736988566
+Hartree-Fock kernel: 220.693769 ms
+Hartree-Fock kernel: 220.770629 ms
+Hartree-Fock kernel: 220.773100 ms
+Hartree-Fock kernel: 220.835749 ms
+Hartree-Fock kernel: 220.780799 ms
+Hartree-Fock kernel: 220.735099 ms
+Hartree-Fock kernel: 220.793229 ms
+Hartree-Fock kernel: 220.743518 ms
+Hartree-Fock kernel: 220.815179 ms
+Hartree-Fock kernel: 220.788359 ms
+Backend: CUDA
+natoms: 256
+ngauss: 3
+quartets: 541089856
+2e- energy=4204.5405260736997661
+Hartree-Fock kernel: 220.703809 ms
+Hartree-Fock kernel: 220.898290 ms
+Hartree-Fock kernel: 220.800100 ms
+Hartree-Fock kernel: 220.801209 ms
+Hartree-Fock kernel: 220.797019 ms
+Hartree-Fock kernel: 220.706369 ms
+Hartree-Fock kernel: 220.827419 ms
+Hartree-Fock kernel: 220.797450 ms
+Hartree-Fock kernel: 220.862340 ms
+Hartree-Fock kernel: 220.850870 ms
+Backend: CUDA
+natoms: 256
+ngauss: 3
+quartets: 541089856
+2e- energy=4204.5405260736988566
+Hartree-Fock kernel: 220.686309 ms
+Hartree-Fock kernel: 220.848140 ms
+Hartree-Fock kernel: 220.793369 ms
+Hartree-Fock kernel: 220.831890 ms
+Hartree-Fock kernel: 220.834149 ms
+Hartree-Fock kernel: 220.933790 ms
+Hartree-Fock kernel: 220.742139 ms
+Hartree-Fock kernel: 220.792540 ms
+Hartree-Fock kernel: 220.778799 ms
+Hartree-Fock kernel: 220.774409 ms
+Backend: CUDA
+natoms: 512
+ngauss: 3
+quartets: 8623587456
+2e- energy=3398.0959925667261814
+Hartree-Fock kernel: 95.145738 ms
+Hartree-Fock kernel: 95.251940 ms
+Hartree-Fock kernel: 95.191659 ms
+Hartree-Fock kernel: 95.176619 ms
+Hartree-Fock kernel: 95.190469 ms
+Hartree-Fock kernel: 95.159568 ms
+Hartree-Fock kernel: 95.192978 ms
+Hartree-Fock kernel: 95.179258 ms
+Hartree-Fock kernel: 95.250549 ms
+Hartree-Fock kernel: 95.185289 ms
+Backend: CUDA
+natoms: 512
+ngauss: 3
+quartets: 8623587456
+2e- energy=3398.0959925667270909
+Hartree-Fock kernel: 95.134258 ms
+Hartree-Fock kernel: 95.187208 ms
+Hartree-Fock kernel: 95.192829 ms
+Hartree-Fock kernel: 95.170749 ms
+Hartree-Fock kernel: 95.184198 ms
+Hartree-Fock kernel: 95.193209 ms
+Hartree-Fock kernel: 95.186229 ms
+Hartree-Fock kernel: 95.191239 ms
+Hartree-Fock kernel: 95.214749 ms
+Hartree-Fock kernel: 95.209119 ms
+Backend: CUDA
+natoms: 512
+ngauss: 3
+quartets: 8623587456
+2e- energy=3398.0959925667252719
+Hartree-Fock kernel: 95.212049 ms
+Hartree-Fock kernel: 95.168649 ms
+Hartree-Fock kernel: 95.182918 ms
+Hartree-Fock kernel: 95.190179 ms
+Hartree-Fock kernel: 95.181019 ms
+Hartree-Fock kernel: 95.176428 ms
+Hartree-Fock kernel: 95.189778 ms
+Hartree-Fock kernel: 95.190379 ms
+Hartree-Fock kernel: 95.236739 ms
+Hartree-Fock kernel: 95.178139 ms
+Backend: CUDA
+natoms: 1024
+ngauss: 6
+quartets: 137707782400
+2e- energy=78384.6829242062522098
+Hartree-Fock kernel: 44165.974924 ms
+Hartree-Fock kernel: 44184.522223 ms
+Hartree-Fock kernel: 44183.144911 ms
+Hartree-Fock kernel: 44183.636335 ms
+Hartree-Fock kernel: 44183.147683 ms
+Hartree-Fock kernel: 44186.333468 ms
+Hartree-Fock kernel: 44186.042441 ms
+Hartree-Fock kernel: 44186.098124 ms
+Hartree-Fock kernel: 44184.702232 ms
+Hartree-Fock kernel: 44185.400678 ms
+Backend: CUDA
+natoms: 1024
+ngauss: 6
+quartets: 137707782400
+2e- energy=78384.6829242062958656
+Hartree-Fock kernel: 44181.611056 ms
+Hartree-Fock kernel: 44183.006841 ms
+Hartree-Fock kernel: 44184.374327 ms
+Hartree-Fock kernel: 44183.209823 ms
+Hartree-Fock kernel: 44184.587808 ms
+Hartree-Fock kernel: 44186.263171 ms
+Hartree-Fock kernel: 44186.896391 ms
+Hartree-Fock kernel: 44184.680818 ms
+Hartree-Fock kernel: 44185.340211 ms
+Hartree-Fock kernel: 44185.736873 ms
+Backend: CUDA
+natoms: 1024
+ngauss: 6
+quartets: 137707782400
+2e- energy=78384.6829242062813137
+Hartree-Fock kernel: 44186.533499 ms
+Hartree-Fock kernel: 44187.141683 ms
+Hartree-Fock kernel: 44186.085425 ms
+Hartree-Fock kernel: 44186.565613 ms
+Hartree-Fock kernel: 44187.544831 ms
+Hartree-Fock kernel: 44185.419366 ms
+Hartree-Fock kernel: 44185.413935 ms
+Hartree-Fock kernel: 44185.919928 ms
+Hartree-Fock kernel: 44185.925041 ms
+Hartree-Fock kernel: 44185.751326 ms

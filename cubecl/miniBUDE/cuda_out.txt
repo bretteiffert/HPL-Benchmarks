@@ -1,0 +1,2175 @@
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 8
+Context/upload time: 1.431 ms
+Valid: true
+Max difference: 0.005221%
+Average: 17.218935 ms
+Minimum: 17.175912 ms
+Maximum: 17.356054 ms
+Stddev: 0.052763 ms
+Giga interactions/s: 92.821764
+GFLOP/s: 2902.592663
+GFinstr/s: 2320.544101
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 8
+Context/upload time: 1.163 ms
+Valid: true
+Max difference: 0.005221%
+Average: 17.210148 ms
+Minimum: 17.178762 ms
+Maximum: 17.305014 ms
+Stddev: 0.037688 ms
+Giga interactions/s: 92.869159
+GFLOP/s: 2904.074726
+GFinstr/s: 2321.728971
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 8
+Context/upload time: 1.082 ms
+Valid: true
+Max difference: 0.005221%
+Average: 17.221520 ms
+Minimum: 17.191663 ms
+Maximum: 17.345464 ms
+Stddev: 0.047892 ms
+Giga interactions/s: 92.807832
+GFLOP/s: 2902.156996
+GFinstr/s: 2320.195797
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 16
+Context/upload time: 1.045 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.597274 ms
+Minimum: 15.563828 ms
+Maximum: 15.614769 ms
+Stddev: 0.015276 ms
+Giga interactions/s: 102.472522
+GFLOP/s: 3204.377704
+GFinstr/s: 2561.813055
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 16
+Context/upload time: 1.056 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.604545 ms
+Minimum: 15.581628 ms
+Maximum: 15.641279 ms
+Stddev: 0.018758 ms
+Giga interactions/s: 102.424774
+GFLOP/s: 3202.884585
+GFinstr/s: 2560.619348
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 16
+Context/upload time: 1.524 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.597270 ms
+Minimum: 15.575208 ms
+Maximum: 15.611079 ms
+Stddev: 0.011725 ms
+Giga interactions/s: 102.472548
+GFLOP/s: 3204.378525
+GFinstr/s: 2561.813712
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 32
+Context/upload time: 1.636 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.414333 ms
+Minimum: 15.391266 ms
+Maximum: 15.499617 ms
+Stddev: 0.032827 ms
+Giga interactions/s: 103.688688
+GFLOP/s: 3242.407948
+GFinstr/s: 2592.217205
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 32
+Context/upload time: 1.176 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.413178 ms
+Minimum: 15.385777 ms
+Maximum: 15.504487 ms
+Stddev: 0.035474 ms
+Giga interactions/s: 103.696457
+GFLOP/s: 3242.650895
+GFinstr/s: 2592.411434
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 32
+Context/upload time: 1.435 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.391860 ms
+Minimum: 15.331706 ms
+Maximum: 15.419357 ms
+Stddev: 0.026235 ms
+Giga interactions/s: 103.840077
+GFLOP/s: 3247.141971
+GFinstr/s: 2596.001927
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 64
+Context/upload time: 1.659 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.409504 ms
+Minimum: 15.388696 ms
+Maximum: 15.468237 ms
+Stddev: 0.023151 ms
+Giga interactions/s: 103.721181
+GFLOP/s: 3243.424022
+GFinstr/s: 2593.029527
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 64
+Context/upload time: 1.609 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.438033 ms
+Minimum: 15.394247 ms
+Maximum: 15.519448 ms
+Stddev: 0.048955 ms
+Giga interactions/s: 103.529507
+GFLOP/s: 3237.430250
+GFinstr/s: 2588.237669
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 64
+Context/upload time: 1.461 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.409554 ms
+Minimum: 15.382236 ms
+Maximum: 15.479377 ms
+Stddev: 0.028948 ms
+Giga interactions/s: 103.720845
+GFLOP/s: 3243.413498
+GFinstr/s: 2593.021114
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 128
+Context/upload time: 1.064 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.609831 ms
+Minimum: 15.590989 ms
+Maximum: 15.660919 ms
+Stddev: 0.021623 ms
+Giga interactions/s: 102.390088
+GFLOP/s: 3201.799932
+GFinstr/s: 2559.752197
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 128
+Context/upload time: 1.302 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.591962 ms
+Minimum: 15.541468 ms
+Maximum: 15.614899 ms
+Stddev: 0.021778 ms
+Giga interactions/s: 102.507429
+GFLOP/s: 3205.469269
+GFinstr/s: 2562.685733
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 8
+Work-group size: 128
+Context/upload time: 1.618 ms
+Valid: true
+Max difference: 0.005221%
+Average: 15.600985 ms
+Minimum: 15.585168 ms
+Maximum: 15.614938 ms
+Stddev: 0.011292 ms
+Giga interactions/s: 102.448146
+GFLOP/s: 3203.615454
+GFinstr/s: 2561.203657
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 8
+Context/upload time: 1.051 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.990722 ms
+Minimum: 36.943088 ms
+Maximum: 37.010498 ms
+Stddev: 0.019712 ms
+Giga interactions/s: 43.207915
+GFLOP/s: 1324.126904
+GFinstr/s: 1080.197869
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 8
+Context/upload time: 1.315 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.993811 ms
+Minimum: 36.975668 ms
+Maximum: 37.012369 ms
+Stddev: 0.014067 ms
+Giga interactions/s: 43.204307
+GFLOP/s: 1324.016348
+GFinstr/s: 1080.107679
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 8
+Context/upload time: 1.269 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.979715 ms
+Minimum: 36.828637 ms
+Maximum: 37.016679 ms
+Stddev: 0.057813 ms
+Giga interactions/s: 43.220776
+GFLOP/s: 1324.521048
+GFinstr/s: 1080.519404
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 16
+Context/upload time: 1.045 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.977941 ms
+Minimum: 36.903948 ms
+Maximum: 37.017068 ms
+Stddev: 0.042289 ms
+Giga interactions/s: 43.222850
+GFLOP/s: 1324.584587
+GFinstr/s: 1080.571238
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 16
+Context/upload time: 1.058 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.970422 ms
+Minimum: 36.826879 ms
+Maximum: 37.027230 ms
+Stddev: 0.059923 ms
+Giga interactions/s: 43.231640
+GFLOP/s: 1324.853988
+GFinstr/s: 1080.791010
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 16
+Context/upload time: 1.268 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.985510 ms
+Minimum: 36.871670 ms
+Maximum: 37.018470 ms
+Stddev: 0.044177 ms
+Giga interactions/s: 43.214003
+GFLOP/s: 1324.313491
+GFinstr/s: 1080.350083
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 32
+Context/upload time: 1.557 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.985132 ms
+Minimum: 36.879949 ms
+Maximum: 37.016541 ms
+Stddev: 0.041081 ms
+Giga interactions/s: 43.214446
+GFLOP/s: 1324.327053
+GFinstr/s: 1080.361146
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 32
+Context/upload time: 1.071 ms
+Valid: true
+Max difference: 0.005221%
+Average: 37.002947 ms
+Minimum: 36.975070 ms
+Maximum: 37.041871 ms
+Stddev: 0.019434 ms
+Giga interactions/s: 43.193640
+GFLOP/s: 1323.689454
+GFinstr/s: 1079.841005
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 32
+Context/upload time: 1.040 ms
+Valid: true
+Max difference: 0.005221%
+Average: 37.001811 ms
+Minimum: 36.987060 ms
+Maximum: 37.024560 ms
+Stddev: 0.011517 ms
+Giga interactions/s: 43.194965
+GFLOP/s: 1323.730066
+GFinstr/s: 1079.874135
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 64
+Context/upload time: 1.184 ms
+Valid: true
+Max difference: 0.005221%
+Average: 37.004779 ms
+Minimum: 36.977050 ms
+Maximum: 37.027841 ms
+Stddev: 0.017427 ms
+Giga interactions/s: 43.191501
+GFLOP/s: 1323.623904
+GFinstr/s: 1079.787530
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 64
+Context/upload time: 1.254 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.997170 ms
+Minimum: 36.960330 ms
+Maximum: 37.011501 ms
+Stddev: 0.015365 ms
+Giga interactions/s: 43.200384
+GFLOP/s: 1323.896117
+GFinstr/s: 1080.009597
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 64
+Context/upload time: 1.467 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.998727 ms
+Minimum: 36.978640 ms
+Maximum: 37.010531 ms
+Stddev: 0.010809 ms
+Giga interactions/s: 43.198567
+GFLOP/s: 1323.840431
+GFinstr/s: 1079.964169
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 128
+Context/upload time: 1.198 ms
+Valid: true
+Max difference: 0.005221%
+Average: 37.003075 ms
+Minimum: 36.986101 ms
+Maximum: 37.040781 ms
+Stddev: 0.015394 ms
+Giga interactions/s: 43.193490
+GFLOP/s: 1323.684848
+GFinstr/s: 1079.837248
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 128
+Context/upload time: 1.156 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.996422 ms
+Minimum: 36.981870 ms
+Maximum: 37.006050 ms
+Stddev: 0.008434 ms
+Giga interactions/s: 43.201258
+GFLOP/s: 1323.922911
+GFinstr/s: 1080.031455
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 16
+Work-group size: 128
+Context/upload time: 1.251 ms
+Valid: true
+Max difference: 0.005221%
+Average: 36.998480 ms
+Minimum: 36.989591 ms
+Maximum: 37.013301 ms
+Stddev: 0.007417 ms
+Giga interactions/s: 43.198854
+GFLOP/s: 1323.849242
+GFinstr/s: 1079.971357
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 8
+Context/upload time: 1.504 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.534924 ms
+Minimum: 52.466764 ms
+Maximum: 52.600505 ms
+Stddev: 0.046025 ms
+Giga interactions/s: 30.423418
+GFLOP/s: 922.830646
+GFinstr/s: 760.585461
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 8
+Context/upload time: 1.287 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.532810 ms
+Minimum: 52.458953 ms
+Maximum: 52.618005 ms
+Stddev: 0.049185 ms
+Giga interactions/s: 30.424643
+GFLOP/s: 922.867776
+GFinstr/s: 760.616063
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 8
+Context/upload time: 1.045 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.510118 ms
+Minimum: 52.431273 ms
+Maximum: 52.591714 ms
+Stddev: 0.057533 ms
+Giga interactions/s: 30.437791
+GFLOP/s: 923.266597
+GFinstr/s: 760.944767
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 16
+Context/upload time: 1.475 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.485957 ms
+Minimum: 52.399813 ms
+Maximum: 52.579884 ms
+Stddev: 0.053529 ms
+Giga interactions/s: 30.451802
+GFLOP/s: 923.691594
+GFinstr/s: 761.295043
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 16
+Context/upload time: 1.067 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.552054 ms
+Minimum: 52.474163 ms
+Maximum: 52.633965 ms
+Stddev: 0.049997 ms
+Giga interactions/s: 30.413501
+GFLOP/s: 922.529831
+GFinstr/s: 760.337533
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 16
+Context/upload time: 1.372 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.470796 ms
+Minimum: 52.355273 ms
+Maximum: 52.600004 ms
+Stddev: 0.080143 ms
+Giga interactions/s: 30.460601
+GFLOP/s: 923.958496
+GFinstr/s: 761.515021
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 32
+Context/upload time: 1.463 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.603162 ms
+Minimum: 52.564046 ms
+Maximum: 52.629866 ms
+Stddev: 0.021561 ms
+Giga interactions/s: 30.383952
+GFLOP/s: 921.633521
+GFinstr/s: 759.598805
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 32
+Context/upload time: 1.247 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.582171 ms
+Minimum: 52.474905 ms
+Maximum: 52.626386 ms
+Stddev: 0.046133 ms
+Giga interactions/s: 30.396082
+GFLOP/s: 922.001447
+GFinstr/s: 759.902045
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 32
+Context/upload time: 1.323 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.583575 ms
+Minimum: 52.472685 ms
+Maximum: 52.625966 ms
+Stddev: 0.045953 ms
+Giga interactions/s: 30.395270
+GFLOP/s: 921.976834
+GFinstr/s: 759.881759
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 64
+Context/upload time: 1.401 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.437572 ms
+Minimum: 52.377294 ms
+Maximum: 52.539936 ms
+Stddev: 0.054449 ms
+Giga interactions/s: 30.479900
+GFLOP/s: 924.543904
+GFinstr/s: 761.997506
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 64
+Context/upload time: 1.272 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.613021 ms
+Minimum: 52.565086 ms
+Maximum: 52.677587 ms
+Stddev: 0.031106 ms
+Giga interactions/s: 30.378259
+GFLOP/s: 921.460821
+GFinstr/s: 759.456468
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 64
+Context/upload time: 1.073 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.590838 ms
+Minimum: 52.493965 ms
+Maximum: 52.632586 ms
+Stddev: 0.041445 ms
+Giga interactions/s: 30.391072
+GFLOP/s: 921.849494
+GFinstr/s: 759.776808
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 128
+Context/upload time: 1.052 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.500730 ms
+Minimum: 52.365344 ms
+Maximum: 52.617756 ms
+Stddev: 0.105621 ms
+Giga interactions/s: 30.443233
+GFLOP/s: 923.431684
+GFinstr/s: 761.080829
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 128
+Context/upload time: 1.631 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.467229 ms
+Minimum: 52.337453 ms
+Maximum: 52.626007 ms
+Stddev: 0.098100 ms
+Giga interactions/s: 30.462672
+GFLOP/s: 924.021318
+GFinstr/s: 761.566798
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 32
+Work-group size: 128
+Context/upload time: 1.062 ms
+Valid: true
+Max difference: 0.005221%
+Average: 52.521667 ms
+Minimum: 52.380424 ms
+Maximum: 52.658697 ms
+Stddev: 0.092251 ms
+Giga interactions/s: 30.431098
+GFLOP/s: 923.063580
+GFinstr/s: 760.777442
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 8
+Context/upload time: 1.382 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.997711 ms
+Minimum: 112.971300 ms
+Maximum: 113.059562 ms
+Stddev: 0.030001 ms
+Giga interactions/s: 14.144463
+GFLOP/s: 426.832109
+GFinstr/s: 353.611581
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 8
+Context/upload time: 1.019 ms
+Valid: true
+Max difference: 0.005221%
+Average: 113.002287 ms
+Minimum: 112.979601 ms
+Maximum: 113.037492 ms
+Stddev: 0.019705 ms
+Giga interactions/s: 14.143890
+GFLOP/s: 426.814823
+GFinstr/s: 353.597260
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 8
+Context/upload time: 1.073 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.862376 ms
+Minimum: 112.769599 ms
+Maximum: 112.986370 ms
+Stddev: 0.086282 ms
+Giga interactions/s: 14.161424
+GFLOP/s: 427.343930
+GFinstr/s: 354.035602
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 16
+Context/upload time: 1.624 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.385661 ms
+Minimum: 112.270794 ms
+Maximum: 112.584888 ms
+Stddev: 0.090394 ms
+Giga interactions/s: 14.221494
+GFLOP/s: 429.156629
+GFinstr/s: 355.537343
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 16
+Context/upload time: 1.078 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.418647 ms
+Minimum: 112.343435 ms
+Maximum: 112.537827 ms
+Stddev: 0.061213 ms
+Giga interactions/s: 14.217321
+GFLOP/s: 429.030703
+GFinstr/s: 355.433019
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 16
+Context/upload time: 2.219 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.646104 ms
+Minimum: 112.360866 ms
+Maximum: 113.034312 ms
+Stddev: 0.245226 ms
+Giga interactions/s: 14.188613
+GFLOP/s: 428.164397
+GFinstr/s: 354.715323
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 32
+Context/upload time: 1.901 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.765569 ms
+Minimum: 112.523377 ms
+Maximum: 113.179673 ms
+Stddev: 0.189446 ms
+Giga interactions/s: 14.173581
+GFLOP/s: 427.710795
+GFinstr/s: 354.339534
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 32
+Context/upload time: 1.054 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.717890 ms
+Minimum: 112.483666 ms
+Maximum: 113.191573 ms
+Stddev: 0.202996 ms
+Giga interactions/s: 14.179577
+GFLOP/s: 427.891716
+GFinstr/s: 354.489419
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 32
+Context/upload time: 1.314 ms
+Valid: true
+Max difference: 0.005221%
+Average: 112.991109 ms
+Minimum: 112.570136 ms
+Maximum: 113.229342 ms
+Stddev: 0.235716 ms
+Giga interactions/s: 14.145290
+GFLOP/s: 426.857048
+GFinstr/s: 353.632242
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 64
+Context/upload time: 2.251 ms
+Valid: true
+Max difference: 0.005221%
+Average: 115.242296 ms
+Minimum: 115.010788 ms
+Maximum: 115.645563 ms
+Stddev: 0.192168 ms
+Giga interactions/s: 13.868970
+GFLOP/s: 418.518661
+GFinstr/s: 346.724256
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 64
+Context/upload time: 1.200 ms
+Valid: true
+Max difference: 0.005221%
+Average: 115.219102 ms
+Minimum: 114.971627 ms
+Maximum: 115.672404 ms
+Stddev: 0.227295 ms
+Giga interactions/s: 13.871762
+GFLOP/s: 418.602909
+GFinstr/s: 346.794052
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 64
+Context/upload time: 1.067 ms
+Valid: true
+Max difference: 0.005221%
+Average: 115.620116 ms
+Minimum: 115.259130 ms
+Maximum: 115.842085 ms
+Stddev: 0.209889 ms
+Giga interactions/s: 13.823650
+GFLOP/s: 417.151035
+GFinstr/s: 345.591238
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 128
+Context/upload time: 1.048 ms
+Valid: true
+Max difference: 0.005221%
+Average: 116.687337 ms
+Minimum: 116.450560 ms
+Maximum: 116.809763 ms
+Stddev: 0.142999 ms
+Giga interactions/s: 13.697219
+GFLOP/s: 413.335779
+GFinstr/s: 342.430467
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 128
+Context/upload time: 1.213 ms
+Valid: true
+Max difference: 0.005221%
+Average: 126.529895 ms
+Minimum: 126.260793 ms
+Maximum: 126.678846 ms
+Stddev: 0.129700 ms
+Giga interactions/s: 12.631734
+GFLOP/s: 381.183048
+GFinstr/s: 315.793347
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 64
+Work-group size: 128
+Context/upload time: 1.039 ms
+Valid: true
+Max difference: 0.005221%
+Average: 129.133881 ms
+Minimum: 128.088559 ms
+Maximum: 129.438620 ms
+Stddev: 0.416861 ms
+Giga interactions/s: 12.377015
+GFLOP/s: 373.496489
+GFinstr/s: 309.425372
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 8
+Context/upload time: 1.290 ms
+Valid: true
+Max difference: 0.005221%
+Average: 181.973770 ms
+Minimum: 181.606864 ms
+Maximum: 182.745083 ms
+Stddev: 0.311327 ms
+Giga interactions/s: 8.783090
+GFLOP/s: 264.357649
+GFinstr/s: 219.577245
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 8
+Context/upload time: 1.286 ms
+Valid: true
+Max difference: 0.005221%
+Average: 181.999828 ms
+Minimum: 181.672024 ms
+Maximum: 182.471961 ms
+Stddev: 0.315547 ms
+Giga interactions/s: 8.781832
+GFLOP/s: 264.319800
+GFinstr/s: 219.545807
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 8
+Context/upload time: 1.388 ms
+Valid: true
+Max difference: 0.005221%
+Average: 181.914004 ms
+Minimum: 181.784496 ms
+Maximum: 182.084128 ms
+Stddev: 0.099905 ms
+Giga interactions/s: 8.785975
+GFLOP/s: 264.444502
+GFinstr/s: 219.649386
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 16
+Context/upload time: 1.496 ms
+Valid: true
+Max difference: 0.005221%
+Average: 183.296565 ms
+Minimum: 182.401990 ms
+Maximum: 184.092944 ms
+Stddev: 0.470909 ms
+Giga interactions/s: 8.719705
+GFLOP/s: 262.449861
+GFinstr/s: 217.992624
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 16
+Context/upload time: 1.056 ms
+Valid: true
+Max difference: 0.005221%
+Average: 183.294206 ms
+Minimum: 182.609902 ms
+Maximum: 183.759171 ms
+Stddev: 0.339245 ms
+Giga interactions/s: 8.719817
+GFLOP/s: 262.453239
+GFinstr/s: 217.995429
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 16
+Context/upload time: 1.638 ms
+Valid: true
+Max difference: 0.005221%
+Average: 182.661920 ms
+Minimum: 182.059517 ms
+Maximum: 183.317708 ms
+Stddev: 0.464323 ms
+Giga interactions/s: 8.750001
+GFLOP/s: 263.361724
+GFinstr/s: 218.750023
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 32
+Context/upload time: 1.721 ms
+Valid: true
+Max difference: 0.005221%
+Average: 184.526603 ms
+Minimum: 184.437858 ms
+Maximum: 184.663789 ms
+Stddev: 0.078230 ms
+Giga interactions/s: 8.661580
+GFLOP/s: 260.700393
+GFinstr/s: 216.539504
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 32
+Context/upload time: 1.465 ms
+Valid: true
+Max difference: 0.005221%
+Average: 184.461030 ms
+Minimum: 184.290496 ms
+Maximum: 184.687700 ms
+Stddev: 0.111457 ms
+Giga interactions/s: 8.664659
+GFLOP/s: 260.793068
+GFinstr/s: 216.616481
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 32
+Context/upload time: 1.215 ms
+Valid: true
+Max difference: 0.005221%
+Average: 184.524631 ms
+Minimum: 184.391617 ms
+Maximum: 184.643909 ms
+Stddev: 0.087163 ms
+Giga interactions/s: 8.661673
+GFLOP/s: 260.703180
+GFinstr/s: 216.541819
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 64
+Context/upload time: 1.314 ms
+Valid: true
+Max difference: 0.005221%
+Average: 213.105841 ms
+Minimum: 196.331649 ms
+Maximum: 225.862680 ms
+Stddev: 12.955487 ms
+Giga interactions/s: 7.499991
+GFLOP/s: 225.738336
+GFinstr/s: 187.499784
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 64
+Context/upload time: 1.239 ms
+Valid: true
+Max difference: 0.005221%
+Average: 208.920122 ms
+Minimum: 204.122675 ms
+Maximum: 213.699107 ms
+Stddev: 4.736574 ms
+Giga interactions/s: 7.650254
+GFLOP/s: 230.261009
+GFinstr/s: 191.256346
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 64
+Context/upload time: 1.249 ms
+Valid: true
+Max difference: 0.005221%
+Average: 209.170344 ms
+Minimum: 204.064005 ms
+Maximum: 214.149420 ms
+Stddev: 4.960130 ms
+Giga interactions/s: 7.641102
+GFLOP/s: 229.985557
+GFinstr/s: 191.027554
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 128
+Context/upload time: 1.577 ms
+Valid: true
+Max difference: 0.005221%
+Average: 370.702156 ms
+Minimum: 370.291857 ms
+Maximum: 371.107964 ms
+Stddev: 0.282601 ms
+Giga interactions/s: 4.311526
+GFLOP/s: 129.770376
+GFinstr/s: 107.788149
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 128
+Context/upload time: 1.147 ms
+Valid: true
+Max difference: 0.005221%
+Average: 372.082647 ms
+Minimum: 371.172885 ms
+Maximum: 372.804359 ms
+Stddev: 0.542179 ms
+Giga interactions/s: 4.295529
+GFLOP/s: 129.288905
+GFinstr/s: 107.388236
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59
+miniBUDE CubeCL 0.10
+Backend: CUDA
+Deck: /home/35e/Mojo-workloads/miniBUDE/data/bm1/
+Deck max poses: 65536
+Poses: 65536
+Protein atoms: 938
+Ligand atoms: 26
+Force-field entries: 34
+PPWI: 128
+Work-group size: 128
+Context/upload time: 1.549 ms
+Valid: true
+Max difference: 0.005221%
+Average: 371.976273 ms
+Minimum: 371.395674 ms
+Maximum: 373.588329 ms
+Stddev: 0.645561 ms
+Giga interactions/s: 4.296758
+GFLOP/s: 129.325878
+GFinstr/s: 107.418946
+Energies:
+  - 865.52
+  - 25.07
+  - 368.43
+  - 14.67
+  - 574.99
+  - 707.35
+  - 33.95
+  - 135.59

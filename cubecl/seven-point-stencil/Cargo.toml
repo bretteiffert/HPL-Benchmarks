@@ -1,0 +1,23 @@
+[package]
+name = "seven-point-stencil"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+cuda = ["cubecl/cuda"]
+hip = ["cubecl/hip"]
+
+[dependencies]
+cubecl = { version = "=0.10.0", default-features = false }
+cubecl-runtime = "=0.10.0"
+cubecl-core = "=0.10.0"
+cubecl-hip = { version = "=0.10.0", optional = true }
+
+[patch.crates-io]
+cubecl-hip-sys = { path = "/home/35e/cubecl-hip-sys/crates/cubecl-hip-sys" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"

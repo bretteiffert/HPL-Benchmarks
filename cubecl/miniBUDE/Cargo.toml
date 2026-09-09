@@ -1,0 +1,18 @@
+[package]
+name = "miniBUDE"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+cuda = ["cubecl/cuda"]
+hip = ["cubecl/hip"]
+
+[dependencies]
+cubecl = { version = "=0.10.0", default-features = false }
+cubecl-runtime = "=0.10.0"
+cubecl-core = "=0.10.0"
+cubecl-cuda = { version = "=0.10.0", optional = true }
+cubecl-hip = { version = "=0.10.0", optional = true }
+
+[patch.crates-io]
+cubecl-hip-sys = { path = "/home/35e/cubecl-hip-sys/crates/cubecl-hip-sys" }

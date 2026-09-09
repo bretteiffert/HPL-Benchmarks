@@ -1,0 +1,13 @@
+2e- energy=11.5852126092481296
+
+--- precision check (build: fp64, sqrt: native) ---
+2e- energy (fp64, fp64 reduction)      = 11.5852126092481296
+2e- energy (fp64 Fock, fp64 reduction) = 11.5852126092481296
+2e- energy (fp64 CPU reference)       = 11.5852126092481278
+precision loss, Fock build only       = 1.533297e-16
+precision loss, incl. fp64 reduction  = 1.533297e-16
+max |F - F_ref| (elementwise)         = 1.776357e-15  (rel 6.383026e-16)
+rms |F - F_ref| (elementwise)         = 4.423963e-16
+max |F(i,j) - F(j,i)|                 = 6.877921e-1
+2e- energy from symmetrized F=A+A^T   = 12.0386712463454142   (diagnostic)
+---------------------------------------------------------------
