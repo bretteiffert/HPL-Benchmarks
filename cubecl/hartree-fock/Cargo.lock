@@ -853,7 +853,6 @@ dependencies = [
 name = "hartree-fock"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "cubecl",
  "cubecl-core",
  "cubecl-cuda",

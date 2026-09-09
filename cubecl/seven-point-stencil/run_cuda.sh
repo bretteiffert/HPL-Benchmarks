@@ -1,6 +1,6 @@
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "stencil - CubeCL, CUDA"
+echo "Seven-point stencil - CubeCL, CUDA"
 
 GRID=1024
 

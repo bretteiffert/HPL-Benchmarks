@@ -1,0 +1,22 @@
+[workspace]
+authors = ["bretteiffert <brettceiffert@gmail.com>"]
+channels = ["conda-forge"]
+name = "triton-seven-point-stencil"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[dependencies]
+numpy = "*"
+python = "3.12.*"
+
+[feature.cuda.pypi-dependencies]
+torch = { version = "==2.13.0", index = "https://download.pytorch.org/whl/cu130" }
+triton = { version = "==3.7.1", index = "https://download.pytorch.org/whl/cu130" }
+
+[feature.hip.pypi-dependencies]
+torch = { version = "==2.13.0", index = "https://download.pytorch.org/whl/rocm7.1" }
+triton-rocm = { version = "==3.7.1", index = "https://download.pytorch.org/whl/rocm7.1" }
+
+[environments]
+cuda = ["cuda"]
+hip = ["hip"]

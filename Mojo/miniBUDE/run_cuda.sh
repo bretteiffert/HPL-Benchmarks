@@ -20,7 +20,7 @@ PPWI_CONFIGS=(
 
 for ppwi in "${PPWI_CONFIGS[@]}"; do
 
-mamba run -n mojo mojo "$SCRIPT_DIR/miniBUDE.mojo" \
+pixi run mojo "$SCRIPT_DIR/miniBUDE.mojo" \
     --deck "$INPUT_DIR" -w $WGSIZE -p "$ppwi"
 
 done

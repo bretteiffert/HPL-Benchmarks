@@ -13,6 +13,6 @@ SIZE_CONFIGS=(
 )
 
 for size in "${SIZE_CONFIGS[@]}"; do
-  BS_SM_COUNT="$BS_SM_COUNT" mamba run -n mojo mojo "$SCRIPT_DIR/babelstream.mojo" \
+  BS_SM_COUNT="$BS_SM_COUNT" pixi run mojo "$SCRIPT_DIR/babelstream.mojo" \
     -s "$size" -n 1000
 done

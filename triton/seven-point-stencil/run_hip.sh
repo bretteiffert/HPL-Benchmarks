@@ -13,7 +13,7 @@ BLOCK_CONFIGS=(
 
 for cfg in "${BLOCK_CONFIGS[@]}"; do
   read -r bx by bz <<< "$cfg"
-  mamba run -n triton-hip python "$SCRIPT_DIR/laplacian.py" \
+  pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e hip \
+    python "$SCRIPT_DIR/laplacian.py" \
     "$GRID" "$GRID" "$GRID" "$bx" "$by" "$bz";
 done
-
