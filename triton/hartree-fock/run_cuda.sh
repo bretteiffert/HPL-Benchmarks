@@ -16,7 +16,7 @@ SIZE_CONFIGS=(
 for size in "${SIZE_CONFIGS[@]}"; do
     input="$INPUT_DIR/$size"
 
-    mamba run -n triton-cuda python "$SCRIPT_DIR/hartree-fock.py" \
-    "$input" --csv --iters=10
+    pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e cuda \
+        python "$SCRIPT_DIR/hartree-fock.py" "$input" --csv --iters=10
     
 done

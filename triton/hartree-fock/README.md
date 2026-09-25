@@ -1,5 +1,15 @@
 ## Hartree-Fock - Triton
-Run a single input or the provided CUDA and HIP sweeps. These commands assume existing `triton-cuda` and `triton-hip` Mamba environments with the corresponding PyTorch build and Triton installed. PyTorch selects the backend from the active environment; ROCm also uses the `torch.cuda` API.
+Run a single input or the provided CUDA and HIP sweeps. PyTorch selects the backend from the active Pixi environment; ROCm also uses the `torch.cuda` API. Run the commands below from `triton/hartree-fock`.
+
+#### Setup
+The included `pixi.toml` targets `linux-64` with Python 3.12 and provides separate environments for the official PyTorch 2.13.0 CUDA 13.0 and ROCm 7.1 wheels. Both environments use the matching Triton 3.7.1 runtime.
+
+Install the environment for the backend on the current machine:
+```sh
+pixi install -e cuda
+# or
+pixi install -e hip
+```
 
 ##### Set configurations
 Set `PRECISION = 32` or `PRECISION = 64` near the top of `hartree-fock.py`; fp64 is the default. `LEGACY_SQRTF` separately controls legacy fp32 square-root behavior.
@@ -9,7 +19,7 @@ The source resolves Triton's version-dependent device `pow` and `erf` APIs from 
 #### CUDA
 Run one:
 ```sh
-mamba run -n triton-cuda python hartree-fock.py ../../data/hartree-fock/he64 --csv --iters=10
+pixi run -e cuda python hartree-fock.py ../../data/hartree-fock/he64 --csv --iters=10
 ```
 
 Run the input-size sweep:
@@ -20,7 +30,7 @@ bash run_cuda.sh
 #### HIP
 Run one:
 ```sh
-mamba run -n triton-hip python hartree-fock.py ../../data/hartree-fock/he64 --csv --iters=10
+pixi run -e hip python hartree-fock.py ../../data/hartree-fock/he64 --csv --iters=10
 ```
 
 Run the input-size sweep:

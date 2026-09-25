@@ -1,5 +1,15 @@
 ## Seven-point Stencil - Triton
-Run a single tile configuration or the provided CUDA and HIP sweeps. These commands assume existing `triton-cuda` and `triton-hip` Mamba environments with the corresponding PyTorch build and Triton installed. PyTorch selects the backend from the active environment; ROCm also uses the `torch.cuda` API.
+Run a single tile configuration or the provided CUDA and HIP sweeps. PyTorch selects the backend from the active Pixi environment; ROCm also uses the `torch.cuda` API. Run the commands below from `triton/seven-point-stencil`.
+
+#### Setup
+The included `pixi.toml` targets `linux-64` with Python 3.12 and provides separate environments for the official PyTorch 2.13.0 CUDA 13.0 and ROCm 7.1 wheels. Both environments use the matching Triton 3.7.1 runtime.
+
+Install the environment for the backend on the current machine:
+```sh
+pixi install -e cuda
+# or
+pixi install -e hip
+```
 
 ##### Set configurations
 Set both `precision` and `precision_str` near the top of `laplacian.py`; the defaults are `torch.float32` and `"float"`.
@@ -9,7 +19,7 @@ The positional arguments are `nx ny nz blk_x blk_y blk_z`. Each run performs 1,0
 #### CUDA
 Run one:
 ```sh
-mamba run -n triton-cuda python laplacian.py 1024 1024 1024 1024 1 1
+pixi run -e cuda python laplacian.py 1024 1024 1024 1024 1 1
 ```
 
 Run the tile sweep:
@@ -20,7 +30,7 @@ bash run_cuda.sh
 #### HIP
 Run one:
 ```sh
-mamba run -n triton-hip python laplacian.py 1024 1024 1024 512 1 1
+pixi run -e hip python laplacian.py 1024 1024 1024 512 1 1
 ```
 
 Run the tile sweep:

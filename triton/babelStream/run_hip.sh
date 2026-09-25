@@ -9,6 +9,7 @@ SIZE_CONFIGS=(
 )
 
 for size in "${SIZE_CONFIGS[@]}"; do
-  FMAD=1 mamba run -n triton-hip python "$SCRIPT_DIR/babelstream.py" \
+  FMAD=1 pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e hip \
+    python "$SCRIPT_DIR/babelstream.py" \
     -s "$size" -n 1000
 done
