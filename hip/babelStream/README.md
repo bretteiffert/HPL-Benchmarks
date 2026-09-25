@@ -1,21 +1,27 @@
-## Babelstream - CUDA
-Run a single customized run or configuration sweep of relevant parameters.
+## BabelStream - HIP
 
-##### Set configurations
-Set precision desired in `main.cpp`
-Set `bool use_float = false;` for double or `bool use_float = true;` for single.
+Run a single customized configuration or a parameter sweep on an AMD GPU with ROCm/HIP.
 
-#### CUDA
-Compile
-```
+### Configuration
+
+Set `use_float` in `main.cpp` to `false` for double precision or `true` for single precision. The `--float` option also selects single precision at runtime.
+
+### Build and run
+
+The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` from ROCm.
+
+```sh
 make
 ```
-Run one
-```
-./babelstream_cuda -s 33554432 -n 1000
-```
-Run all
-```
-source run_cuda.sh
+
+Run one configuration:
+
+```sh
+./babelstream_hip -s 33554432 -n 1000
 ```
 
+Run the supplied size sweep:
+
+```sh
+source run_hip.sh
+```
