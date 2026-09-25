@@ -1,3 +1,4 @@
+
 # This Mojo port builds the Hartree-Fock two-electron Fock matrix on the GPU, optionally validates it against an fp64 CPU calculation, and emits human-readable or per-launch CSV results.
 # Precision defaults to fp64 through the source-level PRECISION comptime value, while LEGACY_SQRTF defaults to false; changing either requires editing and rebuilding rather than setting an environment variable.
 # Inputs are parsed in fp64, device arithmetic uses the selected type, and CSV timing measures one device launch per row without clearing the accumulated Fock matrix between rows.

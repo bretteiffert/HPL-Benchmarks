@@ -19,9 +19,10 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 ###############################################################################
+SYSTEM_ARCH := $(shell nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n 1 | tr -d '.')
 
 CC=nvcc
-FLAGS=-O3 -std=c++17 -arch=sm_90
+FLAGS=-O3 -std=c++17 -arch=sm_$(SYSTEM_ARCH)
 
 EXAMPLE=kernel
 
