@@ -60,9 +60,7 @@
   #error "Model did not define IMPL_CLS!"
 #endif
 
-#ifndef PRECISION_BITS
-  #define PRECISION_BITS 64
-#endif
+#define PRECISION_BITS 64
 
 constexpr int precision = PRECISION_BITS;
 constexpr bool computeDifferential = true;

@@ -20,7 +20,8 @@ PPWI_CONFIGS=(
 
 for ppwi in "${PPWI_CONFIGS[@]}"; do
 
-mamba run -n triton-hip python "$SCRIPT_DIR/miniBUDE.py" \
+pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e hip \
+    python "$SCRIPT_DIR/miniBUDE.py" \
     --deck "$INPUT_DIR" -w $WGSIZE -p "$ppwi"
 
 done
