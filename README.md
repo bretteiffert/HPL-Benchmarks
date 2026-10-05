@@ -3,7 +3,7 @@
 * ROCm 7.14
 * KernelAbstractions.jl 0.9.42
 * Triton 3.7.1
-* Mojo 0.26.2
+* Mojo 1.0.0
 * CubeCL 0.10.0
 
 ## References
