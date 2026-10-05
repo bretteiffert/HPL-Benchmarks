@@ -4,9 +4,7 @@ This CubeCL benchmark builds the two-electron Fock contribution for Hartree-Fock
 
 ## Setup
 
-Install Rust and the vendor toolkit and driver required by the selected backend. Dependencies are pinned to CubeCL 0.10.0 and are fetched by Cargo when the benchmark is built. Included inputs are under `../../data/hartree-fock`.
-
-Before building either backend, update or remove the `cubecl-hip-sys` patch in `Cargo.toml`; it currently points to the machine-local path `/home/35e/cubecl-hip-sys/crates/cubecl-hip-sys`.
+Install Rust and the vendor toolkit and driver required by the selected backend.
 
 ## Configuration
 

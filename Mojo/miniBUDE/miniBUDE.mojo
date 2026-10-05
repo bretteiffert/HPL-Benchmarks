@@ -4,12 +4,12 @@
 #
 # Preserves the original precision, PPWI dispatch, deck/golden comparison, CSV output,
 # and custom formatting behavior. PRECISION_BITS remains a source-level comptime value.
-# On NVIDIA fp64, sin/cos use a self-contained fp64 polynomial path because MAX 26.5 std.math blocks them.
+# This native-math variant uses std.math.sin/cos directly. On Mojo 1.0.0 / MAX 26.5,
+# GPU fp32 is supported; GPU fp64 trig is expected to fail on NVIDIA/AMD backends.
 
 from std.gpu import block_dim, block_idx, thread_idx
 from max.gpu.host import DeviceBuffer, DeviceContext
 from std.math import cos, isfinite, sin, sqrt
-from std.sys.info import is_nvidia_gpu
 from std.memory import Pointer
 from std.sys import argv
 from std.time import perf_counter_ns
@@ -39,94 +39,6 @@ def is_supported_ppwi(p: Int) -> Bool:
 
 
 comptime ULP_NBUCKETS = 10
-
-
-@always_inline
-def _reduce_angle_f64(x: Float64) -> Float64:
-    # Reduce to approximately [-pi, pi]. miniBUDE pose angles are modest, so
-    # nearest-integer reduction is sufficient and keeps this path GPU-only.
-    comptime INV_TWO_PI = Float64(0.15915494309189533577)
-    comptime TWO_PI_HI = Float64(6.28318530717958623200)
-    comptime TWO_PI_LO = Float64(2.4492935982947064e-16)
-    var q = x * INV_TWO_PI
-    var k = Int64(q + (0.5 if q >= 0.0 else -0.5))
-    var kf = Float64(k)
-    return (x - kf * TWO_PI_HI) - kf * TWO_PI_LO
-
-
-@always_inline
-def _nvidia_sin_f64(x: Float64) -> Float64:
-    comptime PI = Float64(3.14159265358979323846264338327950288)
-    comptime HALF_PI = Float64(1.57079632679489661923132169163975144)
-    var r = _reduce_angle_f64(x)
-    if r > HALF_PI:
-        r = PI - r
-    elif r < -HALF_PI:
-        r = -PI - r
-
-    var z = r * r
-    # Odd Taylor polynomial through x^19. On [-pi/2, pi/2] the truncation
-    # error is below ~3e-16 before floating-point rounding.
-    var p = Float64(-8.22063524662432971695598123687228e-18)
-    p = Float64(2.8114572543455207631989455830103e-15) + z * p
-    p = Float64(-7.6471637318198164759011319857881e-13) + z * p
-    p = Float64(1.6059043836821614599392377170155e-10) + z * p
-    p = Float64(-2.5052108385441718775052108385442e-8) + z * p
-    p = Float64(2.7557319223985890652557319223986e-6) + z * p
-    p = Float64(-1.9841269841269841269841269841270e-4) + z * p
-    p = Float64(8.3333333333333333333333333333333e-3) + z * p
-    p = Float64(-1.6666666666666666666666666666667e-1) + z * p
-    return r + r * z * p
-
-
-@always_inline
-def _nvidia_cos_f64(x: Float64) -> Float64:
-    comptime PI = Float64(3.14159265358979323846264338327950288)
-    comptime HALF_PI = Float64(1.57079632679489661923132169163975144)
-    var r = _reduce_angle_f64(x)
-    var sign = Float64(1.0)
-    if r > HALF_PI:
-        r = PI - r
-        sign = -1.0
-    elif r < -HALF_PI:
-        r = -PI - r
-        sign = -1.0
-
-    var z = r * r
-    # Even Taylor polynomial through x^20.
-    var p = Float64(4.1103176233121648584779906184368e-19)
-    p = Float64(-1.5619206968586226462216364350057e-16) + z * p
-    p = Float64(4.7794773323873852974382074911175e-14) + z * p
-    p = Float64(-1.1470745597729724713851697978682e-11) + z * p
-    p = Float64(2.0876756987868098979210090321201e-9) + z * p
-    p = Float64(-2.7557319223985890652557319223986e-7) + z * p
-    p = Float64(2.4801587301587301587301587301587e-5) + z * p
-    p = Float64(-1.3888888888888888888888888888889e-3) + z * p
-    p = Float64(4.1666666666666666666666666666667e-2) + z * p
-    p = Float64(-5.0e-1) + z * p
-    return sign * (1.0 + z * p)
-
-
-@always_inline
-def gpu_sin[dtype: DType](x: Scalar[dtype]) -> Scalar[dtype]:
-    comptime if dtype == DType.float64:
-        comptime if is_nvidia_gpu():
-            return Scalar[dtype](_nvidia_sin_f64(Float64(x)))
-        else:
-            return Scalar[dtype](sin(Float64(x)))
-    else:
-        return Scalar[dtype](sin(Float32(x)))
-
-
-@always_inline
-def gpu_cos[dtype: DType](x: Scalar[dtype]) -> Scalar[dtype]:
-    comptime if dtype == DType.float64:
-        comptime if is_nvidia_gpu():
-            return Scalar[dtype](_nvidia_cos_f64(Float64(x)))
-        else:
-            return Scalar[dtype](cos(Float64(x)))
-    else:
-        return Scalar[dtype](cos(Float32(x)))
 
 
 def ulp_bucket_bound(i: Int) -> Int64:
@@ -203,12 +115,12 @@ def fasten_main[
     comptime for i in range(ppwi):
         var index = Int(ix + Int32(i) * lsz)
 
-        var sx = gpu_sin(t0[unsafe_offset=index])
-        var cx = gpu_cos(t0[unsafe_offset=index])
-        var sy = gpu_sin(t1[unsafe_offset=index])
-        var cy = gpu_cos(t1[unsafe_offset=index])
-        var sz = gpu_sin(t2[unsafe_offset=index])
-        var cz = gpu_cos(t2[unsafe_offset=index])
+        var sx = sin(t0[unsafe_offset=index])
+        var cx = cos(t0[unsafe_offset=index])
+        var sy = sin(t1[unsafe_offset=index])
+        var cy = cos(t1[unsafe_offset=index])
+        var sz = sin(t2[unsafe_offset=index])
+        var cz = cos(t2[unsafe_offset=index])
 
         comptime b = i * 12
         tf[b + 0] = cy * cz
