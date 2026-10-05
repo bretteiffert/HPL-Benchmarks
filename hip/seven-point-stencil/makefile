@@ -20,10 +20,10 @@
 #SOFTWARE.
 ###############################################################################
 
-# Builds the HIP seven-point-stencil executable for gfx942 from the driver and kernel header. The clean target removes compiler intermediates and generated laplacian binaries.
+SYSTEM_ARCH := $(shell amd-smi static --asic --json 2>/dev/null | grep -oE 'gfx[0-9a-f]+' | head -n 1)
 
 CC=hipcc
-FLAGS=-O3 -std=c++17 -march=native --offload-arch=gfx942
+FLAGS=-O3 -std=c++17 -march=native --offload-arch=$(SYSTEM_ARCH)
 
 EXAMPLE=kernel
 

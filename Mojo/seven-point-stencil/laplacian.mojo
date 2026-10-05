@@ -1,10 +1,16 @@
-# This Mojo CUDA-reference port evaluates a seven-point finite-difference Laplacian on a configurable 3D grid and block shape, then reports correctness and bandwidth.
-# It defaults to float64 and device-event timing through the precision and USE_DEVICE_TIMER comptime values, with host wall-clock timing available when the latter is false.
-# Raw device pointers preserve direct stencil indexing, DeviceContext selects CUDA or HIP, and interior results are checked against the quadratic test function's exact Laplacian of 3.
+# Mojo 1.0.0 / MAX 26.5 port of the 3D seven-point finite-difference Laplacian benchmark.
+#
+# Key 1.0 migration points:
+#   * host accelerator APIs live in max.gpu.host
+#   * `def` replaces the removed `fn` spelling
+#   * GPU kernel scalar arguments use fixed-width integers (Int64 here), not Int
+#   * raw pointer access uses Pointer + unsafe_offset=
+#   * enqueue_function takes the kernel function parameter once
+#   * device timing uses the runtime-closure overload of execution_time
 
 from std.gpu import thread_idx, block_idx, block_dim
-from std.gpu.host import DeviceContext, DeviceBuffer
-from std.memory import UnsafePointer
+from max.gpu.host import DeviceContext, DeviceBuffer
+from std.memory import Pointer
 from std.sys import argv, size_of, stderr
 from std.time import perf_counter_ns
 from std.math import sqrt
@@ -19,17 +25,23 @@ comptime NUM_ITER = 100
 comptime USE_DEVICE_TIMER = True
 
 
-fn test_function_kernel[
+def test_function_kernel[
     dtype: DType
 ](
-    u: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    nx: Int,
-    ny: Int,
-    nz: Int,
+    u: Pointer[Scalar[dtype], MutAnyOrigin],
+    nx_arg: Int64,
+    ny_arg: Int64,
+    nz_arg: Int64,
     hx: Scalar[dtype],
     hy: Scalar[dtype],
     hz: Scalar[dtype],
 ):
+    # Int is fine for device-local indexing in Mojo 1.0; only the host/device
+    # kernel ABI requires fixed-width integer arguments.
+    var nx = Int(nx_arg)
+    var ny = Int(ny_arg)
+    var nz = Int(nz_arg)
+
     var i = Int(thread_idx.x) + Int(block_idx.x) * Int(block_dim.x)
     var j = Int(thread_idx.y) + Int(block_idx.y) * Int(block_dim.y)
     var k = Int(thread_idx.z) + Int(block_idx.z) * Int(block_dim.z)
@@ -46,22 +58,28 @@ fn test_function_kernel[
     var Lx = Scalar[dtype](nx) * hx
     var Ly = Scalar[dtype](ny) * hy
     var Lz = Scalar[dtype](nz) * hz
-    u[pos] = c * x * (x - Lx) + c * y * (y - Ly) + c * z * (z - Lz)
+    u[unsafe_offset=pos] = (
+        c * x * (x - Lx) + c * y * (y - Ly) + c * z * (z - Lz)
+    )
 
 
-fn laplacian_kernel[
+def laplacian_kernel[
     dtype: DType
 ](
-    f: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    u: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    nx: Int,
-    ny: Int,
-    nz: Int,
+    f: Pointer[Scalar[dtype], MutAnyOrigin],
+    u: Pointer[Scalar[dtype], MutAnyOrigin],
+    nx_arg: Int64,
+    ny_arg: Int64,
+    nz_arg: Int64,
     invhx2: Scalar[dtype],
     invhy2: Scalar[dtype],
     invhz2: Scalar[dtype],
     invhxyz2: Scalar[dtype],
 ):
+    var nx = Int(nx_arg)
+    var ny = Int(ny_arg)
+    var nz = Int(nz_arg)
+
     var i = Int(thread_idx.x) + Int(block_idx.x) * Int(block_dim.x)
     var j = Int(thread_idx.y) + Int(block_idx.y) * Int(block_dim.y)
     var k = Int(thread_idx.z) + Int(block_idx.z) * Int(block_dim.z)
@@ -79,15 +97,27 @@ fn laplacian_kernel[
     var slice = nx * ny
     var pos = i + nx * j + slice * k
 
-    f[pos] = (
-        u[pos] * invhxyz2
-        + (u[pos - 1] + u[pos + 1]) * invhx2
-        + (u[pos - nx] + u[pos + nx]) * invhy2
-        + (u[pos - slice] + u[pos + slice]) * invhz2
+    f[unsafe_offset=pos] = (
+        u[unsafe_offset=pos] * invhxyz2
+        + (
+            u[unsafe_offset=pos - 1]
+            + u[unsafe_offset=pos + 1]
+        )
+        * invhx2
+        + (
+            u[unsafe_offset=pos - nx]
+            + u[unsafe_offset=pos + nx]
+        )
+        * invhy2
+        + (
+            u[unsafe_offset=pos - slice]
+            + u[unsafe_offset=pos + slice]
+        )
+        * invhz2
     )
 
 
-fn test_function[
+def test_function[
     dtype: DType
 ](
     ctx: DeviceContext,
@@ -100,11 +130,12 @@ fn test_function[
     hz: Scalar[dtype],
 ) raises:
     var gx = (nx - 1) // TBSize + 1
-    ctx.enqueue_function[test_function_kernel[dtype], test_function_kernel[dtype]](
+
+    ctx.enqueue_function[test_function_kernel[dtype]](
         d_u,
-        nx,
-        ny,
-        nz,
+        Int64(nx),
+        Int64(ny),
+        Int64(nz),
         hx,
         hy,
         hz,
@@ -113,7 +144,7 @@ fn test_function[
     )
 
 
-fn laplacian[
+def laplacian[
     dtype: DType
 ](
     ctx: DeviceContext,
@@ -138,12 +169,12 @@ fn laplacian[
     var invhz2 = Scalar[dtype](1) / hz / hz
     var invhxyz2 = Scalar[dtype](-2) * (invhx2 + invhy2 + invhz2)
 
-    ctx.enqueue_function[laplacian_kernel[dtype], laplacian_kernel[dtype]](
+    ctx.enqueue_function[laplacian_kernel[dtype]](
         d_f,
         d_u,
-        nx,
-        ny,
-        nz,
+        Int64(nx),
+        Int64(ny),
+        Int64(nz),
         invhx2,
         invhy2,
         invhz2,
@@ -153,7 +184,7 @@ fn laplacian[
     )
 
 
-fn time_one_iteration[
+def time_one_iteration[
     dtype: DType
 ](
     ctx: DeviceContext,
@@ -169,8 +200,22 @@ fn time_one_iteration[
     hy: Scalar[dtype],
     hz: Scalar[dtype],
 ) raises -> Float64:
-    @parameter
-    fn body(ictx: DeviceContext) raises:
+    # Mojo 1.0 closure syntax. These are immutable reference captures; the
+    # DeviceBuffer wrappers themselves are not mutated by the host function.
+    @always_inline
+    def body(ictx: DeviceContext) raises {
+        d_f,
+        d_u,
+        nx,
+        ny,
+        nz,
+        BLK_X,
+        BLK_Y,
+        BLK_Z,
+        hx,
+        hy,
+        hz,
+    }:
         laplacian[dtype](
             ictx, d_f, d_u, nx, ny, nz, BLK_X, BLK_Y, BLK_Z, hx, hy, hz
         )
@@ -178,7 +223,7 @@ fn time_one_iteration[
     ctx.synchronize()
 
     comptime if USE_DEVICE_TIMER:
-        return Float64(ctx.execution_time[body](1)) * 1e-6
+        return Float64(ctx.execution_time(body, 1)) * 1e-6
     else:
         var t0 = perf_counter_ns()
         laplacian[dtype](
@@ -190,14 +235,14 @@ fn time_one_iteration[
 
 
 @fieldwise_init
-struct CorrectnessResult(Copyable, Movable):
+struct CorrectnessResult(Copyable):
     var max_abs_err: Float64
     var l2_rel_err: Float64
     var mean_abs_err: Float64
     var num_checked: Int
 
 
-fn check_correctness[
+def check_correctness[
     dtype: DType
 ](
     ctx: DeviceContext, d_f: DeviceBuffer[dtype], nx: Int, ny: Int, nz: Int
@@ -227,15 +272,17 @@ fn check_correctness[
 
     if count > 0:
         var mean_abs_err = sum_abs / Float64(count)
-        var l2_rel_err = sqrt(sum_sq_err / sum_sq_exact) if sum_sq_exact > 0.0 else sqrt(
-            sum_sq_err
+        var l2_rel_err = (
+            sqrt(sum_sq_err / sum_sq_exact)
+            if sum_sq_exact > 0.0
+            else sqrt(sum_sq_err)
         )
         return CorrectnessResult(max_err, l2_rel_err, mean_abs_err, count)
 
     return CorrectnessResult(0.0, 0.0, 0.0, 0)
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
 
     var BLK_X = TBSize
@@ -328,9 +375,7 @@ fn main() raises:
             file=stderr,
         )
     else:
-        print(
-            "--- Correctness metrics (precision =", precision_str, ") ---"
-        )
+        print("--- Correctness metrics (precision =", precision_str, ") ---")
         print("Interior points checked :", corr.num_checked)
         print("Max abs error           :", corr.max_abs_err)
         print("Mean abs error          :", corr.mean_abs_err)

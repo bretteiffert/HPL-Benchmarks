@@ -16,7 +16,7 @@ SIZE_CONFIGS=(
 for size in "${SIZE_CONFIGS[@]}"; do
     input="$INPUT_DIR/$size"
 
-    pixi run "$SCRIPT_DIR/hartree-fock.mojo" \
+    pixi run --manifest-path "$SCRIPT_DIR" mojo "$SCRIPT_DIR/hartree-fock.mojo" \
     "$input" --csv --iters=10
     
 done

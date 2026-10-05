@@ -1,15 +1,20 @@
-# This Mojo miniBUDE port loads the reference binary deck, benchmarks selected PPWI/work-group configurations with device-event timing, and reports performance plus numerical metrics.
-# The benchmark precision defaults to fp64 through the source-level PRECISION_BITS value and only that precision is instantiated; NVIDIA builds cannot instantiate fp64 because this Mojo release lacks fp64 GPU sin/cos.
-# Differential metrics require an external fp64 --golden file, while the deck's limited-precision energies supply informational norms.
-# The kernel uses structure-of-arrays buffers and compile-time PPWI dispatch, and its custom decimal formatting can differ from C printf at rounding ties.
+# Mojo 1.0.0 / MAX 26.5 port of the miniBUDE GPU benchmark.
+# Loads the reference binary deck, benchmarks selected PPWI/work-group configurations
+# with device-event timing, and reports performance plus numerical metrics.
+#
+# Preserves the original precision, PPWI dispatch, deck/golden comparison, CSV output,
+# and custom formatting behavior. PRECISION_BITS remains a source-level comptime value.
+# This native-math variant uses std.math.sin/cos directly. On Mojo 1.0.0 / MAX 26.5,
+# GPU fp32 is supported; GPU fp64 trig is expected to fail on NVIDIA/AMD backends.
 
 from std.gpu import block_dim, block_idx, thread_idx
-from std.gpu.host import DeviceBuffer, DeviceContext
+from max.gpu.host import DeviceBuffer, DeviceContext
 from std.math import cos, isfinite, sin, sqrt
-from std.memory import UnsafePointer
+from std.memory import Pointer
 from std.sys import argv
 from std.time import perf_counter_ns
 from std.utils.numerics import max_finite
+from std.collections import List, InlineArray
 
 comptime DEFAULT_ITERS = 8
 comptime DEFAULT_WARMUP = 2
@@ -22,9 +27,6 @@ comptime PRECISION_BITS = 64
 
 comptime FP = DType.float32 if PRECISION_BITS == 32 else DType.float64
 
-from std.builtin.type_aliases import MutAnyOrigin
-
-comptime DevOrigin = MutAnyOrigin
 
 comptime HBTYPE_F: Int32 = 70
 comptime HBTYPE_E: Int32 = 69
@@ -32,14 +34,14 @@ comptime HBTYPE_E: Int32 = 69
 comptime PPWIS_STR = "1,2,4,8,16,32,64,128"
 
 
-fn is_supported_ppwi(p: Int) -> Bool:
+def is_supported_ppwi(p: Int) -> Bool:
     return p == 1 or p == 2 or p == 4 or p == 8 or p == 16 or p == 32 or p == 64 or p == 128
 
 
 comptime ULP_NBUCKETS = 10
 
 
-fn ulp_bucket_bound(i: Int) -> Int64:
+def ulp_bucket_bound(i: Int) -> Int64:
     if i == 0:
         return 1
     if i == 1:
@@ -59,28 +61,28 @@ fn ulp_bucket_bound(i: Int) -> Int64:
     return 4096
 
 
-fn fasten_main[
+def fasten_main[
     dtype: DType, ppwi: Int
 ](
-    etotals: UnsafePointer[Scalar[dtype], DevOrigin],
-    prot_x: UnsafePointer[Scalar[dtype], DevOrigin],
-    prot_y: UnsafePointer[Scalar[dtype], DevOrigin],
-    prot_z: UnsafePointer[Scalar[dtype], DevOrigin],
-    prot_t: UnsafePointer[Int32, DevOrigin],
-    lig_x: UnsafePointer[Scalar[dtype], DevOrigin],
-    lig_y: UnsafePointer[Scalar[dtype], DevOrigin],
-    lig_z: UnsafePointer[Scalar[dtype], DevOrigin],
-    lig_t: UnsafePointer[Int32, DevOrigin],
-    t0: UnsafePointer[Scalar[dtype], DevOrigin],
-    t1: UnsafePointer[Scalar[dtype], DevOrigin],
-    t2: UnsafePointer[Scalar[dtype], DevOrigin],
-    t3: UnsafePointer[Scalar[dtype], DevOrigin],
-    t4: UnsafePointer[Scalar[dtype], DevOrigin],
-    t5: UnsafePointer[Scalar[dtype], DevOrigin],
-    ff_hbtype: UnsafePointer[Int32, DevOrigin],
-    ff_radius: UnsafePointer[Scalar[dtype], DevOrigin],
-    ff_hphb: UnsafePointer[Scalar[dtype], DevOrigin],
-    ff_elsc: UnsafePointer[Scalar[dtype], DevOrigin],
+    etotals: Pointer[Scalar[dtype], MutAnyOrigin],
+    prot_x: Pointer[Scalar[dtype], MutAnyOrigin],
+    prot_y: Pointer[Scalar[dtype], MutAnyOrigin],
+    prot_z: Pointer[Scalar[dtype], MutAnyOrigin],
+    prot_t: Pointer[Int32, MutAnyOrigin],
+    lig_x: Pointer[Scalar[dtype], MutAnyOrigin],
+    lig_y: Pointer[Scalar[dtype], MutAnyOrigin],
+    lig_z: Pointer[Scalar[dtype], MutAnyOrigin],
+    lig_t: Pointer[Int32, MutAnyOrigin],
+    t0: Pointer[Scalar[dtype], MutAnyOrigin],
+    t1: Pointer[Scalar[dtype], MutAnyOrigin],
+    t2: Pointer[Scalar[dtype], MutAnyOrigin],
+    t3: Pointer[Scalar[dtype], MutAnyOrigin],
+    t4: Pointer[Scalar[dtype], MutAnyOrigin],
+    t5: Pointer[Scalar[dtype], MutAnyOrigin],
+    ff_hbtype: Pointer[Int32, MutAnyOrigin],
+    ff_radius: Pointer[Scalar[dtype], MutAnyOrigin],
+    ff_hphb: Pointer[Scalar[dtype], MutAnyOrigin],
+    ff_elsc: Pointer[Scalar[dtype], MutAnyOrigin],
     natlig: Int32,
     natpro: Int32,
     num_transforms: Int32,
@@ -113,37 +115,37 @@ fn fasten_main[
     comptime for i in range(ppwi):
         var index = Int(ix + Int32(i) * lsz)
 
-        var sx = sin(t0[index])
-        var cx = cos(t0[index])
-        var sy = sin(t1[index])
-        var cy = cos(t1[index])
-        var sz = sin(t2[index])
-        var cz = cos(t2[index])
+        var sx = sin(t0[unsafe_offset=index])
+        var cx = cos(t0[unsafe_offset=index])
+        var sy = sin(t1[unsafe_offset=index])
+        var cy = cos(t1[unsafe_offset=index])
+        var sz = sin(t2[unsafe_offset=index])
+        var cz = cos(t2[unsafe_offset=index])
 
         comptime b = i * 12
         tf[b + 0] = cy * cz
         tf[b + 1] = sx * sy * cz - cx * sz
         tf[b + 2] = cx * sy * cz + sx * sz
-        tf[b + 3] = t3[index]
+        tf[b + 3] = t3[unsafe_offset=index]
         tf[b + 4] = cy * sz
         tf[b + 5] = sx * sy * sz + cx * cz
         tf[b + 6] = cx * sy * sz - sx * cz
-        tf[b + 7] = t4[index]
+        tf[b + 7] = t4[unsafe_offset=index]
         tf[b + 8] = -sy
         tf[b + 9] = sx * cy
         tf[b + 10] = cx * cy
-        tf[b + 11] = t5[index]
+        tf[b + 11] = t5[unsafe_offset=index]
 
     for il in range(Int(natlig)):
-        var lx = lig_x[il]
-        var ly = lig_y[il]
-        var lz = lig_z[il]
-        var ltype = Int(lig_t[il])
+        var lx = lig_x[unsafe_offset=il]
+        var ly = lig_y[unsafe_offset=il]
+        var lz = lig_z[unsafe_offset=il]
+        var ltype = Int(lig_t[unsafe_offset=il])
 
-        var l_radius = ff_radius[ltype]
-        var l_hphb = ff_hphb[ltype]
-        var l_elsc = ff_elsc[ltype]
-        var l_hbtype = ff_hbtype[ltype]
+        var l_radius = ff_radius[unsafe_offset=ltype]
+        var l_hphb = ff_hphb[unsafe_offset=ltype]
+        var l_elsc = ff_elsc[unsafe_offset=ltype]
+        var l_hbtype = ff_hbtype[unsafe_offset=ltype]
 
         var lhphb_ltz = l_hphb < ZERO
         var lhphb_gtz = l_hphb > ZERO
@@ -156,15 +158,15 @@ fn fasten_main[
             lpos[o + 2] = tf[b + 11] + lx * tf[b + 8] + ly * tf[b + 9] + lz * tf[b + 10]
 
         for ip in range(Int(natpro)):
-            var px = prot_x[ip]
-            var py = prot_y[ip]
-            var pz = prot_z[ip]
-            var ptype = Int(prot_t[ip])
+            var px = prot_x[unsafe_offset=ip]
+            var py = prot_y[unsafe_offset=ip]
+            var pz = prot_z[unsafe_offset=ip]
+            var ptype = Int(prot_t[unsafe_offset=ip])
 
-            var p_radius = ff_radius[ptype]
-            var p_hphb = ff_hphb[ptype]
-            var p_elsc = ff_elsc[ptype]
-            var p_hbtype = ff_hbtype[ptype]
+            var p_radius = ff_radius[unsafe_offset=ptype]
+            var p_hphb = ff_hphb[unsafe_offset=ptype]
+            var p_elsc = ff_elsc[unsafe_offset=ptype]
+            var p_hbtype = ff_hbtype[unsafe_offset=ptype]
 
             var radij = p_radius + l_radius
             var r_radij = ONE / radij
@@ -226,37 +228,37 @@ fn fasten_main[
     if base < num_transforms:
 
         comptime for i in range(ppwi):
-            etotals[Int(base + Int32(i) * lsz)] = etot[i] * HALF
+            etotals[unsafe_offset=Int(base + Int32(i) * lsz)] = etot[i] * HALF
 
 
-fn _pow10(n: Int) -> Float64:
+def _pow10(n: Int) -> Float64:
     var p = 1.0
     for _ in range(n):
         p *= 10.0
     return p
 
 
-fn _ipow10(n: Int) -> Int:
+def _ipow10(n: Int) -> Int:
     var p = 1
     for _ in range(n):
         p *= 10
     return p
 
 
-fn _render(whole: Int, nd: Int, neg: Bool) -> String:
+def _render(whole: Int, nd: Int, neg: Bool) -> String:
     var scale = _ipow10(nd)
     var ip = whole // scale
     var fp = whole - ip * scale
     var out = String(ip)
     if nd > 0:
         var frac = String(fp)
-        while len(frac) < nd:
+        while frac.byte_length() < nd:
             frac = "0" + frac
         out += "." + frac
     return ("-" + out) if neg else out
 
 
-fn fixed(x: Float64, nd: Int) -> String:
+def fixed(x: Float64, nd: Int) -> String:
     if x != x:
         return "nan"
     var neg = x < 0.0
@@ -265,7 +267,7 @@ fn fixed(x: Float64, nd: Int) -> String:
     return _render(whole, nd, neg)
 
 
-fn sci(x: Float64, nd: Int) -> String:
+def sci(x: Float64, nd: Int) -> String:
     if x != x:
         return "nan"
     var neg = x < 0.0
@@ -287,12 +289,12 @@ fn sci(x: Float64, nd: Int) -> String:
     var esign = "-" if e < 0 else "+"
     var ea = -e if e < 0 else e
     var edig = String(ea)
-    if len(edig) < 2:
+    if edig.byte_length() < 2:
         edig = "0" + edig
     return ("-" if neg else "") + _render(whole, nd, False) + "e" + esign + edig
 
 
-fn gfmt(x: Float64) -> String:
+def gfmt(x: Float64) -> String:
     if x == 0.0:
         return "0"
     if x != x:
@@ -319,14 +321,14 @@ fn gfmt(x: Float64) -> String:
     return _render(whole, nd, neg)
 
 
-fn ulp_ordered_f32(f: Float32) -> Int64:
+def ulp_ordered_f32(f: Float32) -> Int64:
     var u = Int64(f.to_bits())
     if u >= 0x80000000:
         return 0x80000000 - u
     return u
 
 
-fn ulp_ordered_f64(d: Float64) -> Int64:
+def ulp_ordered_f64(d: Float64) -> Int64:
     var u = UInt64(d.to_bits())
     comptime SIGN = UInt64(1) << 63
     if u >= SIGN:
@@ -334,7 +336,7 @@ fn ulp_ordered_f64(d: Float64) -> Int64:
     return Int64(u)
 
 
-fn ulp_distance_f32(a: Float32, b: Float32) -> Int64:
+def ulp_distance_f32(a: Float32, b: Float32) -> Int64:
     if a != a or b != b:
         return Int64.MAX
     if a == b:
@@ -343,7 +345,7 @@ fn ulp_distance_f32(a: Float32, b: Float32) -> Int64:
     return -d if d < 0 else d
 
 
-fn ulp_distance_f64(a: Float64, b: Float64) -> Int64:
+def ulp_distance_f64(a: Float64, b: Float64) -> Int64:
     if a != a or b != b:
         return Int64.MAX
     if a == b:
@@ -352,7 +354,7 @@ fn ulp_distance_f64(a: Float64, b: Float64) -> Int64:
     return -d if d < 0 else d
 
 
-fn ulp_bucket_label(i: Int) -> String:
+def ulp_bucket_label(i: Int) -> String:
     if i == 0:
         return "0"
     if i == ULP_NBUCKETS - 1:
@@ -365,7 +367,7 @@ fn ulp_bucket_label(i: Int) -> String:
 
 
 @fieldwise_init
-struct Metrics(ImplicitlyCopyable, Movable):
+struct Metrics(Copyable, Movable):
     var l2_rel_norm: Float64
     var rms_abs: Float64
     var mean_signed: Float64
@@ -381,27 +383,27 @@ struct Metrics(ImplicitlyCopyable, Movable):
     var beyond_tolerance: Int
 
 
-fn empty_metrics() -> Metrics:
+def empty_metrics() -> Metrics:
     var h = InlineArray[Int, ULP_NBUCKETS](fill=0)
-    return Metrics(0.0, 0.0, 0.0, 0.0, 0, 0.0, 0, 0, 0, h, 0, 0, 0)
+    return Metrics(0.0, 0.0, 0.0, 0.0, 0, 0.0, 0, 0, 0, h^, 0, 0, 0)
 
 
 struct Kahan(Copyable, Movable):
     var sum: Float64
     var c: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.sum = 0.0
         self.c = 0.0
 
-    fn add(mut self, x: Float64):
+    def add(mut self, x: Float64):
         var y = x - self.c
         var t = self.sum + y
         self.c = (t - self.sum) - y
         self.sum = t
 
 
-fn compute_metrics(
+def compute_metrics(
     measured: List[Float64], reference: List[Float64], precision_bits: Int
 ) -> Metrics:
     var m = empty_metrics()
@@ -461,10 +463,10 @@ fn compute_metrics(
         m.mean_signed = signed_err.sum / Float64(m.compared)
         if ref_sq.sum > 0.0:
             m.l2_rel_norm = sqrt(err_sq.sum) / sqrt(ref_sq.sum)
-    return m
+    return m^
 
 
-fn compare_to_deck(
+def compare_to_deck(
     measured: List[Float64], ref_energies: List[Float32]
 ) -> Metrics:
     var n = min(len(ref_energies), len(measured))
@@ -491,25 +493,25 @@ struct Deck(Copyable, Movable):
     var poses: List[List[Float32]]
     var ref_energies: List[Float32]
 
-    fn natpro(self) -> Int:
+    def natpro(self) -> Int:
         return len(self.prot_x)
 
-    fn natlig(self) -> Int:
+    def natlig(self) -> Int:
         return len(self.lig_x)
 
-    fn nposes(self) -> Int:
+    def nposes(self) -> Int:
         return len(self.poses[0])
 
 
-fn le_f32(b: List[UInt8], off: Int) -> Float32:
-    return (b.unsafe_ptr() + off).bitcast[Float32]()[]
+def le_f32(b: List[UInt8], off: Int) -> Float32:
+    return b.unsafe_ptr().unsafe_offset(off).unsafe_bitcast[Float32]()[]
 
 
-fn le_i32(b: List[UInt8], off: Int) -> Int32:
-    return (b.unsafe_ptr() + off).bitcast[Int32]()[]
+def le_i32(b: List[UInt8], off: Int) -> Int32:
+    return b.unsafe_ptr().unsafe_offset(off).unsafe_bitcast[Int32]()[]
 
 
-fn read_bytes(path: String) raises -> List[UInt8]:
+def read_bytes(path: String) raises -> List[UInt8]:
     with open(path, "r") as f:
         return f.read_bytes()
 
@@ -525,7 +527,7 @@ struct Sample(Copyable, Movable):
     var context_millis: Float64
 
 
-fn fasten[
+def fasten[
     dtype: DType, ppwi: Int
 ](ctx: DeviceContext, deck: Deck, wgsize: Int, iters: Int, warmup: Int) raises -> Sample:
     var n = deck.nposes()
@@ -540,6 +542,7 @@ fn fasten[
         h_prot_x.append(Scalar[dtype](deck.prot_x[i]))
         h_prot_y.append(Scalar[dtype](deck.prot_y[i]))
         h_prot_z.append(Scalar[dtype](deck.prot_z[i]))
+
     var h_lig_x = List[Scalar[dtype]]()
     var h_lig_y = List[Scalar[dtype]]()
     var h_lig_z = List[Scalar[dtype]]()
@@ -547,6 +550,7 @@ fn fasten[
         h_lig_x.append(Scalar[dtype](deck.lig_x[i]))
         h_lig_y.append(Scalar[dtype](deck.lig_y[i]))
         h_lig_z.append(Scalar[dtype](deck.lig_z[i]))
+
     var h_ff_rad = List[Scalar[dtype]]()
     var h_ff_hphb = List[Scalar[dtype]]()
     var h_ff_elsc = List[Scalar[dtype]]()
@@ -554,6 +558,22 @@ fn fasten[
         h_ff_rad.append(Scalar[dtype](deck.ff_radius[i]))
         h_ff_hphb.append(Scalar[dtype](deck.ff_hphb[i]))
         h_ff_elsc.append(Scalar[dtype](deck.ff_elsc[i]))
+
+    # Keep all six pose host buffers alive until the asynchronous H->D copies
+    # have completed. This also avoids origin tracking through List[DeviceBuffer].
+    var h_t0 = List[Scalar[dtype]]()
+    var h_t1 = List[Scalar[dtype]]()
+    var h_t2 = List[Scalar[dtype]]()
+    var h_t3 = List[Scalar[dtype]]()
+    var h_t4 = List[Scalar[dtype]]()
+    var h_t5 = List[Scalar[dtype]]()
+    for i in range(n):
+        h_t0.append(Scalar[dtype](deck.poses[0][i]))
+        h_t1.append(Scalar[dtype](deck.poses[1][i]))
+        h_t2.append(Scalar[dtype](deck.poses[2][i]))
+        h_t3.append(Scalar[dtype](deck.poses[3][i]))
+        h_t4.append(Scalar[dtype](deck.poses[4][i]))
+        h_t5.append(Scalar[dtype](deck.poses[5][i]))
 
     var context_start = perf_counter_ns()
 
@@ -571,72 +591,103 @@ fn fasten[
     var d_ff_elsc = ctx.enqueue_create_buffer[dtype](ntypes)
     var d_out = ctx.enqueue_create_buffer[dtype](n)
 
-    ctx.enqueue_copy(d_prot_x, h_prot_x.unsafe_ptr())
-    ctx.enqueue_copy(d_prot_y, h_prot_y.unsafe_ptr())
-    ctx.enqueue_copy(d_prot_z, h_prot_z.unsafe_ptr())
-    ctx.enqueue_copy(d_prot_t, deck.prot_t.unsafe_ptr())
-    ctx.enqueue_copy(d_lig_x, h_lig_x.unsafe_ptr())
-    ctx.enqueue_copy(d_lig_y, h_lig_y.unsafe_ptr())
-    ctx.enqueue_copy(d_lig_z, h_lig_z.unsafe_ptr())
-    ctx.enqueue_copy(d_lig_t, deck.lig_t.unsafe_ptr())
-    ctx.enqueue_copy(d_ff_hb, deck.ff_hbtype.unsafe_ptr())
-    ctx.enqueue_copy(d_ff_rad, h_ff_rad.unsafe_ptr())
-    ctx.enqueue_copy(d_ff_hphb, h_ff_hphb.unsafe_ptr())
-    ctx.enqueue_copy(d_ff_elsc, h_ff_elsc.unsafe_ptr())
+    var d_t0 = ctx.enqueue_create_buffer[dtype](n)
+    var d_t1 = ctx.enqueue_create_buffer[dtype](n)
+    var d_t2 = ctx.enqueue_create_buffer[dtype](n)
+    var d_t3 = ctx.enqueue_create_buffer[dtype](n)
+    var d_t4 = ctx.enqueue_create_buffer[dtype](n)
+    var d_t5 = ctx.enqueue_create_buffer[dtype](n)
 
-    var d_t = List[DeviceBuffer[dtype]]()
-    for k in range(6):
-        var host = List[Scalar[dtype]]()
-        for i in range(n):
-            host.append(Scalar[dtype](deck.poses[k][i]))
-        var buf = ctx.enqueue_create_buffer[dtype](n)
-        ctx.enqueue_copy(buf, host.unsafe_ptr())
-        d_t.append(buf)
+    ctx.enqueue_copy(d_prot_x, h_prot_x.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_prot_y, h_prot_y.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_prot_z, h_prot_z.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_prot_t, deck.prot_t.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_lig_x, h_lig_x.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_lig_y, h_lig_y.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_lig_z, h_lig_z.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_lig_t, deck.lig_t.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_ff_hb, deck.ff_hbtype.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_ff_rad, h_ff_rad.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_ff_hphb, h_ff_hphb.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_ff_elsc, h_ff_elsc.unsafe_ptr().as_imm())
+
+    ctx.enqueue_copy(d_t0, h_t0.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_t1, h_t1.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_t2, h_t2.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_t3, h_t3.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_t4, h_t4.unsafe_ptr().as_imm())
+    ctx.enqueue_copy(d_t5, h_t5.unsafe_ptr().as_imm())
 
     ctx.synchronize()
     var context_millis = Float64(perf_counter_ns() - context_start) * 1e-6
 
     var blocks = ((n + ppwi - 1) // ppwi + wgsize - 1) // wgsize
 
+    # The GPU ABI uses fixed-width integer arguments.
+    var natlig_dev = Int32(natlig)
+    var natpro_dev = Int32(natpro)
+    var n_dev = Int32(n)
+
+    @always_inline
+    def launch(c: DeviceContext) raises {
+        d_out,
+        d_prot_x,
+        d_prot_y,
+        d_prot_z,
+        d_prot_t,
+        d_lig_x,
+        d_lig_y,
+        d_lig_z,
+        d_lig_t,
+        d_t0,
+        d_t1,
+        d_t2,
+        d_t3,
+        d_t4,
+        d_t5,
+        d_ff_hb,
+        d_ff_rad,
+        d_ff_hphb,
+        d_ff_elsc,
+        natlig_dev,
+        natpro_dev,
+        n_dev,
+        blocks,
+        wgsize,
+    }:
+        c.enqueue_function[fasten_main[dtype, ppwi]](
+            d_out,
+            d_prot_x,
+            d_prot_y,
+            d_prot_z,
+            d_prot_t,
+            d_lig_x,
+            d_lig_y,
+            d_lig_z,
+            d_lig_t,
+            d_t0,
+            d_t1,
+            d_t2,
+            d_t3,
+            d_t4,
+            d_t5,
+            d_ff_hb,
+            d_ff_rad,
+            d_ff_hphb,
+            d_ff_elsc,
+            natlig_dev,
+            natpro_dev,
+            n_dev,
+            grid_dim=blocks,
+            block_dim=wgsize,
+        )
+
     var kernel_millis = List[Float64]()
     var wall_millis = List[Float64]()
 
     for _ in range(iters + warmup):
         var wall_start = perf_counter_ns()
-
-        @parameter
-        fn launch(c: DeviceContext) raises:
-            c.enqueue_function[
-                fasten_main[dtype, ppwi],
-                signature_func = fasten_main[dtype, ppwi],
-            ](
-                d_out.unsafe_ptr(),
-                d_prot_x.unsafe_ptr(),
-                d_prot_y.unsafe_ptr(),
-                d_prot_z.unsafe_ptr(),
-                d_prot_t.unsafe_ptr(),
-                d_lig_x.unsafe_ptr(),
-                d_lig_y.unsafe_ptr(),
-                d_lig_z.unsafe_ptr(),
-                d_lig_t.unsafe_ptr(),
-                d_t[0].unsafe_ptr(),
-                d_t[1].unsafe_ptr(),
-                d_t[2].unsafe_ptr(),
-                d_t[3].unsafe_ptr(),
-                d_t[4].unsafe_ptr(),
-                d_t[5].unsafe_ptr(),
-                d_ff_hb.unsafe_ptr(),
-                d_ff_rad.unsafe_ptr(),
-                d_ff_hphb.unsafe_ptr(),
-                d_ff_elsc.unsafe_ptr(),
-                Int32(natlig),
-                Int32(natpro),
-                Int32(n),
-                grid_dim=blocks,
-                block_dim=wgsize,
-            )
-
-        var ns = ctx.execution_time[launch](1)
+        var ns = ctx.execution_time(launch, 1)
         var wall_ns = perf_counter_ns() - wall_start
 
         kernel_millis.append(Float64(ns) * 1e-6)
@@ -662,8 +713,7 @@ fn fasten[
         context_millis,
     )
 
-
-fn fasten_dispatch[
+def fasten_dispatch[
     dtype: DType
 ](ctx: DeviceContext, deck: Deck, wgsize: Int, ppwi: Int, iters: Int, warmup: Int) raises -> Sample:
     if ppwi == 1:
@@ -694,7 +744,7 @@ struct SummaryStats(ImplicitlyCopyable, Movable):
     var std_dev: Float64
 
 
-fn summarise(ys: List[Float64]) -> SummaryStats:
+def summarise(ys: List[Float64]) -> SummaryStats:
     var lo = ys[0]
     var hi = ys[0]
     var total = 0.0
@@ -726,7 +776,7 @@ struct Result(Copyable, Movable):
     var vs_deck: Metrics
 
 
-fn evaluate(
+def evaluate(
     deck: Deck,
     s: Sample,
     reference: List[Float64],
@@ -786,13 +836,13 @@ fn evaluate(
         ginsts,
         interactions_per_sec,
         launch_overhead_ms,
-        vs_reference,
+        vs_reference^,
         has_differential,
-        vs_deck,
+        vs_deck^,
     )
 
 
-fn show_human_readable(r: Result, out_rows: Int):
+def show_human_readable(r: Result, out_rows: Int):
     var p = " "
     var raw = String("")
     for i in range(len(r.sample.kernel_millis)):
@@ -829,7 +879,7 @@ fn show_human_readable(r: Result, out_rows: Int):
         print(p, "    - " + fixed(r.sample.energies[i], 6))
 
     if r.has_differential:
-        var m = r.vs_reference
+        var m = r.vs_reference.copy()
         print(p, "  vs_fp64_reference:")
         print(p, "    l2_rel_norm:       " + sci(m.l2_rel_norm, 6))
         print(p, "    rms_abs:           " + sci(m.rms_abs, 6))
@@ -876,7 +926,7 @@ fn show_human_readable(r: Result, out_rows: Int):
             "  vs_fp64_reference:   ~ # benchmarked precision is the reference",
         )
 
-    var d = r.vs_deck
+    var d = r.vs_deck.copy()
     print(
         p,
         "  vs_deck_reference:   # informational; ref_energies.out is low precision",
@@ -900,7 +950,7 @@ fn show_human_readable(r: Result, out_rows: Int):
     )
 
 
-fn show_csv(r: Result, header: Bool):
+def show_csv(r: Result, header: Bool):
     if header:
         print(
             "precision_bits,ppwi,wgsize,sum_ms,avg_ms,min_ms,max_ms,stddev_ms,"
@@ -920,7 +970,7 @@ fn show_csv(r: Result, header: Bool):
     line += "," + fixed(r.ginsts, 3)
     line += "," + fixed(r.launch_overhead_ms, 3)
     if r.has_differential:
-        var m = r.vs_reference
+        var m = r.vs_reference.copy()
         line += "," + sci(m.l2_rel_norm, 6)
         line += "," + sci(m.rms_abs, 6)
         line += "," + sci(m.mean_signed, 6)
@@ -933,7 +983,7 @@ fn show_csv(r: Result, header: Bool):
     print(line)
 
 
-fn load_deck(deck_dir: String, nposes_arg: Int) raises -> Deck:
+def load_deck(deck_dir: String, nposes_arg: Int) raises -> Deck:
     var atoms_l = read_bytes(deck_dir + "/ligand.in")
     var atoms_p = read_bytes(deck_dir + "/protein.in")
     var ffb = read_bytes(deck_dir + "/forcefield.in")
@@ -994,7 +1044,7 @@ fn load_deck(deck_dir: String, nposes_arg: Int) raises -> Deck:
         var text = f.read()
         for line in text.split("\n"):
             var t = String(line).strip()
-            if len(t) > 0:
+            if t.byte_length() > 0:
                 ref_energies.append(Float32(atof(t)))
     if n > len(ref_energies):
         raise Error(
@@ -1013,18 +1063,18 @@ fn load_deck(deck_dir: String, nposes_arg: Int) raises -> Deck:
     )
 
 
-fn load_golden(path: String) raises -> List[Float64]:
+def load_golden(path: String) raises -> List[Float64]:
     var out = List[Float64]()
     with open(path, "r") as f:
         var text = f.read()
         for line in text.split("\n"):
             var t = String(line).strip()
-            if len(t) > 0:
+            if t.byte_length() > 0:
                 out.append(atof(t))
     return out^
 
 
-fn print_help():
+def print_help():
     print("")
     print("Usage: bude_mojo [COMMAND|OPTIONS]")
     print("")
@@ -1054,16 +1104,16 @@ fn print_help():
     print("")
 
 
-fn split_ints(s: String) raises -> List[Int]:
+def split_ints(s: String) raises -> List[Int]:
     var out = List[Int]()
     for tok in s.split(","):
         var t = String(tok).strip()
-        if len(t) > 0:
+        if t.byte_length() > 0:
             out.append(Int(atol(t)))
     return out^
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
 
     var deck_dir = String(DEFAULT_DATA_DIR)
@@ -1159,7 +1209,7 @@ fn main() raises:
 
     var golden = List[Float64]()
     var golden_ready = False
-    if len(golden_path) > 0:
+    if golden_path.byte_length() > 0:
         golden = load_golden(golden_path)
         golden_ready = True
         if len(golden) < n:

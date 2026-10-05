@@ -1,14 +1,29 @@
-# This Mojo port builds the Hartree-Fock two-electron Fock matrix on the GPU, optionally validates it against an fp64 CPU calculation, and emits human-readable or per-launch CSV results.
-# Precision defaults to fp64 through the source-level PRECISION comptime value, while LEGACY_SQRTF defaults to false; changing either requires editing and rebuilding rather than setting an environment variable.
-# Inputs are parsed in fp64, device arithmetic uses the selected type, and CSV timing measures one device launch per row without clearing the accumulated Fock matrix between rows.
-# Formatting uses Python interoperability, and fp64 NVIDIA device sqrt uses the correctly rounded NVVM intrinsic while host and AMD paths use std.math.sqrt.
+# Mojo 1.0.0 / MAX 26.5 port of the Hartree-Fock two-electron Fock-matrix benchmark.
+#
+# Preserves the original benchmark behavior:
+#   * source-selectable fp32/fp64 arithmetic
+#   * Schwarz screening and GPU atomic Fock accumulation
+#   * optional fp64 CPU reference validation
+#   * native/legacy Boys-function sqrt modes
+#   * human-readable and per-launch CSV output
+#
+# Mojo 1.0 migration points:
+#   * GPU host APIs moved to max.gpu.host
+#   * `def` replaces the old `fn` spelling
+#   * raw pointers use Pointer and unsafe_offset=
+#   * legacy raw allocation uses unsafe_alloc / unsafe_free explicitly
+#   * Atomic moved to std.atomic
+#   * enqueue_function takes the kernel function parameter once
+#   * GPU ABI integer arguments use fixed-width integers, not Int
+#   * execution_time uses an explicit runtime closure capture list
 
-from python import Python, PythonObject
+from std.python import PythonObject
 from std.gpu import block_dim, block_idx, thread_idx
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import erf, exp, sqrt
-from std.memory import UnsafePointer, alloc
-from std.os.atomic import Atomic
+from std.memory import Pointer
+from std.memory.alloc import unsafe_alloc
+from std.atomic import Atomic
 from std.sys import argv
 from std.sys.info import is_nvidia_gpu
 from std.sys.intrinsics import llvm_intrinsic
@@ -34,7 +49,7 @@ comptime REF_DTOL = Float64(1.0e-12)
 comptime REF_RCUT = Float64(1.0e-12)
 
 
-fn cfmt_f64(spec: String, v: Float64) raises -> String:
+def cfmt_f64(spec: String, v: Float64) raises -> String:
     var py_spec = PythonObject(spec)
     var py_v = PythonObject(v)
     var result = py_spec % py_v
@@ -42,12 +57,12 @@ fn cfmt_f64(spec: String, v: Float64) raises -> String:
 
 
 @always_inline
-fn sq[T: DType](x: Scalar[T]) -> Scalar[T]:
+def sq[T: DType](x: Scalar[T]) -> Scalar[T]:
     return x * x
 
 
 @always_inline
-fn r_exp(x: real_t) -> real_t:
+def r_exp(x: real_t) -> real_t:
     comptime if dtype == DType.float64:
         return real_t(exp(Float64(x)))
     else:
@@ -55,7 +70,7 @@ fn r_exp(x: real_t) -> real_t:
 
 
 @always_inline
-fn r_erf(x: real_t) -> real_t:
+def r_erf(x: real_t) -> real_t:
     comptime if dtype == DType.float64:
         return real_t(erf(Float64(x)))
     else:
@@ -63,7 +78,7 @@ fn r_erf(x: real_t) -> real_t:
 
 
 @always_inline
-fn r_pow(a: real_t, b: real_t) -> real_t:
+def r_pow(a: real_t, b: real_t) -> real_t:
     comptime if dtype == DType.float64:
         return real_t(Float64(a) ** Float64(b))
     else:
@@ -71,7 +86,7 @@ fn r_pow(a: real_t, b: real_t) -> real_t:
 
 
 @always_inline
-fn r_sqrt(x: real_t) -> real_t:
+def r_sqrt(x: real_t) -> real_t:
     comptime if dtype == DType.float64:
         comptime if is_nvidia_gpu():
             var d: Float64 = Float64(x)
@@ -84,12 +99,12 @@ fn r_sqrt(x: real_t) -> real_t:
 
 
 @always_inline
-fn idx_sqrt(x: UInt64) -> UInt64:
+def idx_sqrt(x: UInt64) -> UInt64:
     return UInt64(sqrt(Float32(x)))
 
 
 @always_inline
-fn sqrt_boys(x: real_t) -> real_t:
+def sqrt_boys(x: real_t) -> real_t:
     comptime if LEGACY_SQRTF:
         return real_t(sqrt(Float32(x)))
     else:
@@ -97,21 +112,26 @@ fn sqrt_boys(x: real_t) -> real_t:
 
 
 @always_inline
-fn atomic_add_real(ptr: UnsafePointer[real_t, MutAnyOrigin], v: real_t):
-    _ = Atomic.fetch_add(ptr, v)
+def atomic_add_real(ptr: Pointer[real_t, MutAnyOrigin], v: real_t):
+    _ = Atomic[dtype].fetch_add(ptr, v)
 
 
-fn hartree_fock_kernel(
+def hartree_fock_kernel(
     nnnn: UInt64,
-    ngauss: Int,
-    natoms: Int,
-    geom: UnsafePointer[real_t, MutAnyOrigin],
-    xpnt: UnsafePointer[real_t, MutAnyOrigin],
-    coef: UnsafePointer[real_t, MutAnyOrigin],
-    dens: UnsafePointer[real_t, MutAnyOrigin],
-    schwarz: UnsafePointer[real_t, MutAnyOrigin],
-    fock: UnsafePointer[real_t, MutAnyOrigin],
+    ngauss_arg: Int64,
+    natoms_arg: Int64,
+    geom: Pointer[real_t, MutAnyOrigin],
+    xpnt: Pointer[real_t, MutAnyOrigin],
+    coef: Pointer[real_t, MutAnyOrigin],
+    dens: Pointer[real_t, MutAnyOrigin],
+    schwarz: Pointer[real_t, MutAnyOrigin],
+    fock: Pointer[real_t, MutAnyOrigin],
 ):
+    # Int is fine for device-local indexing; only host/device ABI arguments
+    # need fixed-width integer types in Mojo 1.0.
+    var ngauss = Int(ngauss_arg)
+    var natoms = Int(natoms_arg)
+
     var ijkl = UInt64(block_idx.x) * UInt64(block_dim.x) + UInt64(thread_idx.x)
     if ijkl == 0 or ijkl > nnnn:
         return
@@ -125,7 +145,7 @@ fn hartree_fock_kernel(
         n = (ij * ij + ij) // 2
     var kl = ijkl - (ij * ij - ij) // 2
 
-    if not (schwarz[Int(ij)] * schwarz[Int(kl)] > DTOL):
+    if not (schwarz[unsafe_offset=Int(ij)] * schwarz[unsafe_offset=Int(kl)] > DTOL):
         return
 
     var i = idx_sqrt(2 * ij) - 1
@@ -153,48 +173,48 @@ fn hartree_fock_kernel(
 
     for ib in range(ngauss):
         for jb in range(ngauss):
-            var aij = one_t / (xpnt[ib] + xpnt[jb])
+            var aij = one_t / (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb])
             var dij = (
-                coef[ib]
-                * coef[jb]
+                coef[unsafe_offset=ib]
+                * coef[unsafe_offset=jb]
                 * r_exp(
-                    -xpnt[ib]
-                    * xpnt[jb]
+                    -xpnt[unsafe_offset=ib]
+                    * xpnt[unsafe_offset=jb]
                     * aij
                     * (
-                        sq(geom[Int(i)] - geom[Int(j)])
-                        + sq(geom[Int(nat + i)] - geom[Int(nat + j)])
-                        + sq(geom[Int(2 * nat + i)] - geom[Int(2 * nat + j)])
+                        sq(geom[unsafe_offset=Int(i)] - geom[unsafe_offset=Int(j)])
+                        + sq(geom[unsafe_offset=Int(nat + i)] - geom[unsafe_offset=Int(nat + j)])
+                        + sq(geom[unsafe_offset=Int(2 * nat + i)] - geom[unsafe_offset=Int(2 * nat + j)])
                     )
                 )
                 * r_pow(aij, p15)
             )
             if abs(dij) > DTOL:
-                var xij = aij * (xpnt[ib] * geom[Int(i)] + xpnt[jb] * geom[Int(j)])
+                var xij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=Int(i)] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=Int(j)])
                 var yij = aij * (
-                    xpnt[ib] * geom[Int(nat + i)] + xpnt[jb] * geom[Int(nat + j)]
+                    xpnt[unsafe_offset=ib] * geom[unsafe_offset=Int(nat + i)] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=Int(nat + j)]
                 )
                 var zij = aij * (
-                    xpnt[ib] * geom[Int(2 * nat + i)]
-                    + xpnt[jb] * geom[Int(2 * nat + j)]
+                    xpnt[unsafe_offset=ib] * geom[unsafe_offset=Int(2 * nat + i)]
+                    + xpnt[unsafe_offset=jb] * geom[unsafe_offset=Int(2 * nat + j)]
                 )
                 for kb in range(ngauss):
                     for lb in range(ngauss):
-                        var akl = one_t / (xpnt[kb] + xpnt[lb])
+                        var akl = one_t / (xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
                         var dkl = (
                             dij
-                            * coef[kb]
-                            * coef[lb]
+                            * coef[unsafe_offset=kb]
+                            * coef[unsafe_offset=lb]
                             * r_exp(
-                                -xpnt[kb]
-                                * xpnt[lb]
+                                -xpnt[unsafe_offset=kb]
+                                * xpnt[unsafe_offset=lb]
                                 * akl
                                 * (
-                                    sq(geom[Int(k)] - geom[Int(l)])
-                                    + sq(geom[Int(nat + k)] - geom[Int(nat + l)])
+                                    sq(geom[unsafe_offset=Int(k)] - geom[unsafe_offset=Int(l)])
+                                    + sq(geom[unsafe_offset=Int(nat + k)] - geom[unsafe_offset=Int(nat + l)])
                                     + sq(
-                                        geom[Int(2 * nat + k)]
-                                        - geom[Int(2 * nat + l)]
+                                        geom[unsafe_offset=Int(2 * nat + k)]
+                                        - geom[unsafe_offset=Int(2 * nat + l)]
                                     )
                                 )
                             )
@@ -202,33 +222,33 @@ fn hartree_fock_kernel(
                         )
                         if abs(dkl) > DTOL:
                             var aijkl = (
-                                (xpnt[ib] + xpnt[jb])
-                                * (xpnt[kb] + xpnt[lb])
-                                / (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
+                                (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb])
+                                * (xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
+                                / (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb] + xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
                             )
                             var tt = aijkl * (
                                 sq(
                                     xij
                                     - akl
                                     * (
-                                        xpnt[kb] * geom[Int(k)]
-                                        + xpnt[lb] * geom[Int(l)]
+                                        xpnt[unsafe_offset=kb] * geom[unsafe_offset=Int(k)]
+                                        + xpnt[unsafe_offset=lb] * geom[unsafe_offset=Int(l)]
                                     )
                                 )
                                 + sq(
                                     yij
                                     - akl
                                     * (
-                                        xpnt[kb] * geom[Int(nat + k)]
-                                        + xpnt[lb] * geom[Int(nat + l)]
+                                        xpnt[unsafe_offset=kb] * geom[unsafe_offset=Int(nat + k)]
+                                        + xpnt[unsafe_offset=lb] * geom[unsafe_offset=Int(nat + l)]
                                     )
                                 )
                                 + sq(
                                     zij
                                     - akl
                                     * (
-                                        xpnt[kb] * geom[Int(2 * nat + k)]
-                                        + xpnt[lb] * geom[Int(2 * nat + l)]
+                                        xpnt[unsafe_offset=kb] * geom[unsafe_offset=Int(2 * nat + k)]
+                                        + xpnt[unsafe_offset=lb] * geom[unsafe_offset=Int(2 * nat + l)]
                                     )
                                 )
                             )
@@ -245,18 +265,18 @@ fn hartree_fock_kernel(
         eri *= real_t(0.5)
 
     var four = real_t(4.0)
-    atomic_add_real(fock + Int(i * nat + j), dens[Int(k * nat + l)] * eri * four)
-    atomic_add_real(fock + Int(k * nat + l), dens[Int(i * nat + j)] * eri * four)
-    atomic_add_real(fock + Int(i * nat + k), -dens[Int(j * nat + l)] * eri)
-    atomic_add_real(fock + Int(i * nat + l), -dens[Int(j * nat + k)] * eri)
-    atomic_add_real(fock + Int(j * nat + k), -dens[Int(i * nat + l)] * eri)
-    atomic_add_real(fock + Int(j * nat + l), -dens[Int(i * nat + k)] * eri)
+    atomic_add_real(fock.unsafe_offset(Int(i * nat + j)), dens[unsafe_offset=Int(k * nat + l)] * eri * four)
+    atomic_add_real(fock.unsafe_offset(Int(k * nat + l)), dens[unsafe_offset=Int(i * nat + j)] * eri * four)
+    atomic_add_real(fock.unsafe_offset(Int(i * nat + k)), -dens[unsafe_offset=Int(j * nat + l)] * eri)
+    atomic_add_real(fock.unsafe_offset(Int(i * nat + l)), -dens[unsafe_offset=Int(j * nat + k)] * eri)
+    atomic_add_real(fock.unsafe_offset(Int(j * nat + k)), -dens[unsafe_offset=Int(i * nat + l)] * eri)
+    atomic_add_real(fock.unsafe_offset(Int(j * nat + l)), -dens[unsafe_offset=Int(i * nat + k)] * eri)
 
 
-fn ssss_host(
+def ssss_host(
     i: Int, j: Int, k: Int, l: Int, ngauss: Int,
-    xpnt: UnsafePointer[real_t, ImmutAnyOrigin], coef: UnsafePointer[real_t, ImmutAnyOrigin],
-    geom: UnsafePointer[real_t, ImmutAnyOrigin], natoms: Int,
+    xpnt: Pointer[real_t, MutUntrackedOrigin], coef: Pointer[real_t, MutUntrackedOrigin],
+    geom: Pointer[real_t, MutUntrackedOrigin], natoms: Int,
 ) -> real_t:
     var eri = real_t(0.0)
     var one_t = real_t(1.0)
@@ -264,39 +284,39 @@ fn ssss_host(
     var pm05 = real_t(-0.5)
     for ib in range(ngauss):
         for jb in range(ngauss):
-            var aij = one_t / (xpnt[ib] + xpnt[jb])
+            var aij = one_t / (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb])
             var dij = (
-                coef[ib] * coef[jb]
-                * r_exp(-xpnt[ib] * xpnt[jb] * aij * (
-                    sq(geom[i] - geom[j])
-                    + sq(geom[natoms + i] - geom[natoms + j])
-                    + sq(geom[2 * natoms + i] - geom[2 * natoms + j])))
+                coef[unsafe_offset=ib] * coef[unsafe_offset=jb]
+                * r_exp(-xpnt[unsafe_offset=ib] * xpnt[unsafe_offset=jb] * aij * (
+                    sq(geom[unsafe_offset=i] - geom[unsafe_offset=j])
+                    + sq(geom[unsafe_offset=natoms + i] - geom[unsafe_offset=natoms + j])
+                    + sq(geom[unsafe_offset=2 * natoms + i] - geom[unsafe_offset=2 * natoms + j])))
                 * r_pow(aij, p15)
             )
             if abs(dij) > DTOL:
-                var xij = aij * (xpnt[ib] * geom[i] + xpnt[jb] * geom[j])
-                var yij = aij * (xpnt[ib] * geom[natoms + i] + xpnt[jb] * geom[natoms + j])
-                var zij = aij * (xpnt[ib] * geom[2 * natoms + i] + xpnt[jb] * geom[2 * natoms + j])
+                var xij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=i] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=j])
+                var yij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=natoms + i] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=natoms + j])
+                var zij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=2 * natoms + i] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=2 * natoms + j])
                 for kb in range(ngauss):
                     for lb in range(ngauss):
-                        var akl = one_t / (xpnt[kb] + xpnt[lb])
+                        var akl = one_t / (xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
                         var dkl = (
-                            dij * coef[kb] * coef[lb]
-                            * r_exp(-xpnt[kb] * xpnt[lb] * akl * (
-                                sq(geom[k] - geom[l])
-                                + sq(geom[natoms + k] - geom[natoms + l])
-                                + sq(geom[2 * natoms + k] - geom[2 * natoms + l])))
+                            dij * coef[unsafe_offset=kb] * coef[unsafe_offset=lb]
+                            * r_exp(-xpnt[unsafe_offset=kb] * xpnt[unsafe_offset=lb] * akl * (
+                                sq(geom[unsafe_offset=k] - geom[unsafe_offset=l])
+                                + sq(geom[unsafe_offset=natoms + k] - geom[unsafe_offset=natoms + l])
+                                + sq(geom[unsafe_offset=2 * natoms + k] - geom[unsafe_offset=2 * natoms + l])))
                             * r_pow(akl, p15)
                         )
                         if abs(dkl) > DTOL:
                             var aijkl = (
-                                (xpnt[ib] + xpnt[jb]) * (xpnt[kb] + xpnt[lb])
-                                / (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
+                                (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb]) * (xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
+                                / (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb] + xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
                             )
                             var tt = aijkl * (
-                                sq(xij - akl * (xpnt[kb] * geom[k] + xpnt[lb] * geom[l]))
-                                + sq(yij - akl * (xpnt[kb] * geom[natoms + k] + xpnt[lb] * geom[natoms + l]))
-                                + sq(zij - akl * (xpnt[kb] * geom[2 * natoms + k] + xpnt[lb] * geom[2 * natoms + l]))
+                                sq(xij - akl * (xpnt[unsafe_offset=kb] * geom[unsafe_offset=k] + xpnt[unsafe_offset=lb] * geom[unsafe_offset=l]))
+                                + sq(yij - akl * (xpnt[unsafe_offset=kb] * geom[unsafe_offset=natoms + k] + xpnt[unsafe_offset=lb] * geom[unsafe_offset=natoms + l]))
+                                + sq(zij - akl * (xpnt[unsafe_offset=kb] * geom[unsafe_offset=2 * natoms + k] + xpnt[unsafe_offset=lb] * geom[unsafe_offset=2 * natoms + l]))
                             )
                             var f0t = SQRTPI2_HOST
                             if tt > RCUT:
@@ -305,47 +325,47 @@ fn ssss_host(
     return eri
 
 
-fn ssss_ref(
+def ssss_ref(
     i: Int, j: Int, k: Int, l: Int, ngauss: Int,
-    xpnt: UnsafePointer[Float64, ImmutAnyOrigin], coef: UnsafePointer[Float64, ImmutAnyOrigin],
-    geom: UnsafePointer[Float64, ImmutAnyOrigin], natoms: Int,
+    xpnt: Pointer[Float64, MutUntrackedOrigin], coef: Pointer[Float64, MutUntrackedOrigin],
+    geom: Pointer[Float64, MutUntrackedOrigin], natoms: Int,
 ) -> Float64:
     var eri = Float64(0.0)
     for ib in range(ngauss):
         for jb in range(ngauss):
-            var aij = Float64(1.0) / (xpnt[ib] + xpnt[jb])
+            var aij = Float64(1.0) / (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb])
             var dij = (
-                coef[ib] * coef[jb]
-                * exp(-xpnt[ib] * xpnt[jb] * aij * (
-                    sq(geom[i] - geom[j])
-                    + sq(geom[natoms + i] - geom[natoms + j])
-                    + sq(geom[2 * natoms + i] - geom[2 * natoms + j])))
+                coef[unsafe_offset=ib] * coef[unsafe_offset=jb]
+                * exp(-xpnt[unsafe_offset=ib] * xpnt[unsafe_offset=jb] * aij * (
+                    sq(geom[unsafe_offset=i] - geom[unsafe_offset=j])
+                    + sq(geom[unsafe_offset=natoms + i] - geom[unsafe_offset=natoms + j])
+                    + sq(geom[unsafe_offset=2 * natoms + i] - geom[unsafe_offset=2 * natoms + j])))
                 * (aij ** Float64(1.5))
             )
             if abs(dij) > REF_DTOL:
-                var xij = aij * (xpnt[ib] * geom[i] + xpnt[jb] * geom[j])
-                var yij = aij * (xpnt[ib] * geom[natoms + i] + xpnt[jb] * geom[natoms + j])
-                var zij = aij * (xpnt[ib] * geom[2 * natoms + i] + xpnt[jb] * geom[2 * natoms + j])
+                var xij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=i] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=j])
+                var yij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=natoms + i] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=natoms + j])
+                var zij = aij * (xpnt[unsafe_offset=ib] * geom[unsafe_offset=2 * natoms + i] + xpnt[unsafe_offset=jb] * geom[unsafe_offset=2 * natoms + j])
                 for kb in range(ngauss):
                     for lb in range(ngauss):
-                        var akl = Float64(1.0) / (xpnt[kb] + xpnt[lb])
+                        var akl = Float64(1.0) / (xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
                         var dkl = (
-                            dij * coef[kb] * coef[lb]
-                            * exp(-xpnt[kb] * xpnt[lb] * akl * (
-                                sq(geom[k] - geom[l])
-                                + sq(geom[natoms + k] - geom[natoms + l])
-                                + sq(geom[2 * natoms + k] - geom[2 * natoms + l])))
+                            dij * coef[unsafe_offset=kb] * coef[unsafe_offset=lb]
+                            * exp(-xpnt[unsafe_offset=kb] * xpnt[unsafe_offset=lb] * akl * (
+                                sq(geom[unsafe_offset=k] - geom[unsafe_offset=l])
+                                + sq(geom[unsafe_offset=natoms + k] - geom[unsafe_offset=natoms + l])
+                                + sq(geom[unsafe_offset=2 * natoms + k] - geom[unsafe_offset=2 * natoms + l])))
                             * (akl ** Float64(1.5))
                         )
                         if abs(dkl) > REF_DTOL:
                             var aijkl = (
-                                (xpnt[ib] + xpnt[jb]) * (xpnt[kb] + xpnt[lb])
-                                / (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
+                                (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb]) * (xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
+                                / (xpnt[unsafe_offset=ib] + xpnt[unsafe_offset=jb] + xpnt[unsafe_offset=kb] + xpnt[unsafe_offset=lb])
                             )
                             var tt = aijkl * (
-                                sq(xij - akl * (xpnt[kb] * geom[k] + xpnt[lb] * geom[l]))
-                                + sq(yij - akl * (xpnt[kb] * geom[natoms + k] + xpnt[lb] * geom[natoms + l]))
-                                + sq(zij - akl * (xpnt[kb] * geom[2 * natoms + k] + xpnt[lb] * geom[2 * natoms + l]))
+                                sq(xij - akl * (xpnt[unsafe_offset=kb] * geom[unsafe_offset=k] + xpnt[unsafe_offset=lb] * geom[unsafe_offset=l]))
+                                + sq(yij - akl * (xpnt[unsafe_offset=kb] * geom[unsafe_offset=natoms + k] + xpnt[unsafe_offset=lb] * geom[unsafe_offset=natoms + l]))
+                                + sq(zij - akl * (xpnt[unsafe_offset=kb] * geom[unsafe_offset=2 * natoms + k] + xpnt[unsafe_offset=lb] * geom[unsafe_offset=2 * natoms + l]))
                             )
                             var f0t = REF_SQRTPI2
                             if tt > REF_RCUT:
@@ -354,23 +374,23 @@ fn ssss_ref(
     return eri
 
 
-fn fock_build_cpu(
+def fock_build_cpu(
     ngauss: Int, natoms: Int,
-    geom: UnsafePointer[Float64, ImmutAnyOrigin], xpnt: UnsafePointer[Float64, ImmutAnyOrigin],
-    coef: UnsafePointer[Float64, ImmutAnyOrigin], dens: UnsafePointer[Float64, ImmutAnyOrigin],
-    fock_out: UnsafePointer[Float64, MutAnyOrigin],
+    geom: Pointer[Float64, MutUntrackedOrigin], xpnt: Pointer[Float64, MutUntrackedOrigin],
+    coef: Pointer[Float64, MutUntrackedOrigin], dens: Pointer[Float64, MutUntrackedOrigin],
+    fock_out: Pointer[Float64, MutUntrackedOrigin],
 ):
     for t in range(natoms * natoms):
-        fock_out[t] = 0.0
+        fock_out[unsafe_offset=t] = 0.0
     var nn_ref = (natoms * natoms + natoms) // 2
-    var schwarz = alloc[Float64](nn_ref + 1)
+    var schwarz = unsafe_alloc[Float64](nn_ref + 1)
     for t in range(nn_ref + 1):
-        schwarz[t] = 0.0
+        schwarz[unsafe_offset=t] = 0.0
     var ijr = 0
     for i in range(natoms):
         for j in range(i + 1):
             ijr += 1
-            schwarz[ijr] = sqrt(abs(ssss_ref(i, j, i, j, ngauss, xpnt, coef, geom, natoms)))
+            schwarz[unsafe_offset=ijr] = sqrt(abs(ssss_ref(i, j, i, j, ngauss, xpnt, coef, geom, natoms)))
 
     for i in range(natoms):
         for j in range(i + 1):
@@ -380,7 +400,7 @@ fn fock_build_cpu(
                     var kl = k * (k + 1) // 2 + l + 1
                     if kl > ij:
                         continue
-                    if not (schwarz[ij] * schwarz[kl] > REF_DTOL):
+                    if not (schwarz[unsafe_offset=ij] * schwarz[unsafe_offset=kl] > REF_DTOL):
                         continue
                     var eri = ssss_ref(i, j, k, l, ngauss, xpnt, coef, geom, natoms)
                     if i == j:
@@ -389,38 +409,38 @@ fn fock_build_cpu(
                         eri *= 0.5
                     if i == k and j == l:
                         eri *= 0.5
-                    fock_out[i * natoms + j] += dens[k * natoms + l] * eri * 4.0
-                    fock_out[k * natoms + l] += dens[i * natoms + j] * eri * 4.0
-                    fock_out[i * natoms + k] -= dens[j * natoms + l] * eri
-                    fock_out[i * natoms + l] -= dens[j * natoms + k] * eri
-                    fock_out[j * natoms + k] -= dens[i * natoms + l] * eri
-                    fock_out[j * natoms + l] -= dens[i * natoms + k] * eri
-    schwarz.free()
+                    fock_out[unsafe_offset=i * natoms + j] += dens[unsafe_offset=k * natoms + l] * eri * 4.0
+                    fock_out[unsafe_offset=k * natoms + l] += dens[unsafe_offset=i * natoms + j] * eri * 4.0
+                    fock_out[unsafe_offset=i * natoms + k] -= dens[unsafe_offset=j * natoms + l] * eri
+                    fock_out[unsafe_offset=i * natoms + l] -= dens[unsafe_offset=j * natoms + k] * eri
+                    fock_out[unsafe_offset=j * natoms + k] -= dens[unsafe_offset=i * natoms + l] * eri
+                    fock_out[unsafe_offset=j * natoms + l] -= dens[unsafe_offset=i * natoms + k] * eri
+    schwarz.unsafe_free()
 
 
-fn energy_from_fock(
-    fock: UnsafePointer[Float64, ImmutAnyOrigin], dens: UnsafePointer[Float64, ImmutAnyOrigin], natoms: Int
+def energy_from_fock(
+    fock: Pointer[Float64, MutUntrackedOrigin], dens: Pointer[Float64, MutUntrackedOrigin], natoms: Int
 ) -> Float64:
     var e = Float64(0.0)
     for t in range(natoms * natoms):
-        e += fock[t] * dens[t]
+        e += fock[unsafe_offset=t] * dens[unsafe_offset=t]
     return e * 0.5
 
 
-fn energy_symmetrized(
-    fock: UnsafePointer[Float64, ImmutAnyOrigin], dens: UnsafePointer[Float64, ImmutAnyOrigin], natoms: Int
+def energy_symmetrized(
+    fock: Pointer[Float64, MutUntrackedOrigin], dens: Pointer[Float64, MutUntrackedOrigin], natoms: Int
 ) -> Float64:
     var e = Float64(0.0)
     for i in range(natoms):
         for j in range(natoms):
-            var f = fock[i * natoms + j]
+            var f = fock[unsafe_offset=i * natoms + j]
             if i != j:
-                f += fock[j * natoms + i]
-            e += f * dens[i * natoms + j]
+                f += fock[unsafe_offset=j * natoms + i]
+            e += f * dens[unsafe_offset=i * natoms + j]
     return e * 0.5
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 2:
         print("ERROR: Please provide an input file")
@@ -453,59 +473,59 @@ fn main() raises:
     var ngauss = Int(atol(String(tok[p]))); p += 1
     var natoms = Int(atol(String(tok[p]))); p += 1
 
-    var xpnt_d = alloc[Float64](ngauss)
-    var coef_d = alloc[Float64](ngauss)
+    var xpnt_d = unsafe_alloc[Float64](ngauss)
+    var coef_d = unsafe_alloc[Float64](ngauss)
     for i in range(ngauss):
-        xpnt_d[i] = atof(String(tok[p])); p += 1
-        coef_d[i] = atof(String(tok[p])); p += 1
-    var geom_d = alloc[Float64](3 * natoms)
+        xpnt_d[unsafe_offset=i] = atof(String(tok[p])); p += 1
+        coef_d[unsafe_offset=i] = atof(String(tok[p])); p += 1
+    var geom_d = unsafe_alloc[Float64](3 * natoms)
     for i in range(natoms):
         for j in range(3):
-            geom_d[j * natoms + i] = atof(String(tok[p])); p += 1
+            geom_d[unsafe_offset=j * natoms + i] = atof(String(tok[p])); p += 1
 
     var nsq = natoms * natoms
-    var h_xpnt = alloc[real_t](ngauss)
-    var h_coef = alloc[real_t](ngauss)
-    var h_geom = alloc[real_t](3 * natoms)
+    var h_xpnt = unsafe_alloc[real_t](ngauss)
+    var h_coef = unsafe_alloc[real_t](ngauss)
+    var h_geom = unsafe_alloc[real_t](3 * natoms)
     for i in range(ngauss):
-        h_xpnt[i] = real_t(xpnt_d[i])
-        h_coef[i] = real_t(coef_d[i])
+        h_xpnt[unsafe_offset=i] = real_t(xpnt_d[unsafe_offset=i])
+        h_coef[unsafe_offset=i] = real_t(coef_d[unsafe_offset=i])
     for i in range(3 * natoms):
-        h_geom[i] = real_t(geom_d[i])
+        h_geom[unsafe_offset=i] = real_t(geom_d[unsafe_offset=i])
 
-    var h_dens = alloc[real_t](nsq)
-    var dens_d = alloc[Float64](nsq)
+    var h_dens = unsafe_alloc[real_t](nsq)
+    var dens_d = unsafe_alloc[Float64](nsq)
     for i in range(natoms):
         for j in range(natoms):
-            h_dens[i * natoms + j] = real_t(0.1)
-            dens_d[i * natoms + j] = 0.1
-        h_dens[i * natoms + i] = real_t(1.0)
-        dens_d[i * natoms + i] = 1.0
+            h_dens[unsafe_offset=i * natoms + j] = real_t(0.1)
+            dens_d[unsafe_offset=i * natoms + j] = 0.1
+        h_dens[unsafe_offset=i * natoms + i] = real_t(1.0)
+        dens_d[unsafe_offset=i * natoms + i] = 1.0
 
     for i in range(ngauss):
-        h_coef[i] = h_coef[i] * r_pow(real_t(2.0) * h_xpnt[i], real_t(0.75))
-        coef_d[i] = coef_d[i] * ((2.0 * xpnt_d[i]) ** Float64(0.75))
+        h_coef[unsafe_offset=i] = h_coef[unsafe_offset=i] * r_pow(real_t(2.0) * h_xpnt[unsafe_offset=i], real_t(0.75))
+        coef_d[unsafe_offset=i] = coef_d[unsafe_offset=i] * ((2.0 * xpnt_d[unsafe_offset=i]) ** Float64(0.75))
     for i in range(natoms):
-        h_geom[0 * natoms + i] *= TOBOHRS
-        h_geom[1 * natoms + i] *= TOBOHRS
-        h_geom[2 * natoms + i] *= TOBOHRS
-        geom_d[0 * natoms + i] *= 1.889725987722
-        geom_d[1 * natoms + i] *= 1.889725987722
-        geom_d[2 * natoms + i] *= 1.889725987722
+        h_geom[unsafe_offset=0 * natoms + i] *= TOBOHRS
+        h_geom[unsafe_offset=1 * natoms + i] *= TOBOHRS
+        h_geom[unsafe_offset=2 * natoms + i] *= TOBOHRS
+        geom_d[unsafe_offset=0 * natoms + i] *= 1.889725987722
+        geom_d[unsafe_offset=1 * natoms + i] *= 1.889725987722
+        geom_d[unsafe_offset=2 * natoms + i] *= 1.889725987722
 
-    var h_fock = alloc[real_t](nsq)
+    var h_fock = unsafe_alloc[real_t](nsq)
     for t in range(nsq):
-        h_fock[t] = real_t(0.0)
+        h_fock[unsafe_offset=t] = real_t(0.0)
 
     var nn = (natoms * natoms + natoms) // 2
-    var h_schwarz = alloc[real_t](nn + 1)
+    var h_schwarz = unsafe_alloc[real_t](nn + 1)
     for t in range(nn + 1):
-        h_schwarz[t] = real_t(0.0)
+        h_schwarz[unsafe_offset=t] = real_t(0.0)
     var ij = 0
     for i in range(natoms):
         for j in range(i + 1):
             ij += 1
-            h_schwarz[ij] = sqrt(abs(ssss_host(i, j, i, j, ngauss, h_xpnt, h_coef, h_geom, natoms)))
+            h_schwarz[unsafe_offset=ij] = sqrt(abs(ssss_host(i, j, i, j, ngauss, h_xpnt, h_coef, h_geom, natoms)))
 
     var nnnn = UInt64(nn) * UInt64(nn)
     nnnn = (nnnn + UInt64(nn)) // 2
@@ -521,33 +541,29 @@ fn main() raises:
     var d_fock = ctx.enqueue_create_buffer[dtype](nsq)
     var d_schwarz = ctx.enqueue_create_buffer[dtype](nn + 1)
 
-    ctx.enqueue_copy(d_xpnt, h_xpnt)
-    ctx.enqueue_copy(d_coef, h_coef)
-    ctx.enqueue_copy(d_geom, h_geom)
-    ctx.enqueue_copy(d_dens, h_dens)
-    ctx.enqueue_copy(d_fock, h_fock)
-    ctx.enqueue_copy(d_schwarz, h_schwarz)
+    ctx.enqueue_copy(d_xpnt, h_xpnt.as_imm())
+    ctx.enqueue_copy(d_coef, h_coef.as_imm())
+    ctx.enqueue_copy(d_geom, h_geom.as_imm())
+    ctx.enqueue_copy(d_dens, h_dens.as_imm())
+    ctx.enqueue_copy(d_fock, h_fock.as_imm())
+    ctx.enqueue_copy(d_schwarz, h_schwarz.as_imm())
     ctx.synchronize()
 
-    var p_xpnt = d_xpnt.unsafe_ptr()
-    var p_coef = d_coef.unsafe_ptr()
-    var p_geom = d_geom.unsafe_ptr()
-    var p_dens = d_dens.unsafe_ptr()
-    var p_fock = d_fock.unsafe_ptr()
-    var p_schwarz = d_schwarz.unsafe_ptr()
+    var ngauss_dev = Int64(ngauss)
+    var natoms_dev = Int64(natoms)
 
-    var a_xpnt = p_xpnt.as_any_origin()
-    var a_coef = p_coef.as_any_origin()
-    var a_geom = p_geom.as_any_origin()
-    var a_dens = p_dens.as_any_origin()
-    var a_fock = p_fock.as_any_origin()
-    var a_schwarz = p_schwarz.as_any_origin()
-
-    @parameter
-    fn launch(c: DeviceContext) raises:
-        c.enqueue_function[hartree_fock_kernel, hartree_fock_kernel](
-            nnnn, ngauss, natoms,
-            a_geom, a_xpnt, a_coef, a_dens, a_schwarz, a_fock,
+    @always_inline
+    def launch(c: DeviceContext) raises {d_geom, d_xpnt, d_coef, d_dens, d_schwarz, d_fock, nnnn, ngauss_dev, natoms_dev, n_blks}:
+        c.enqueue_function[hartree_fock_kernel](
+            nnnn,
+            ngauss_dev,
+            natoms_dev,
+            d_geom,
+            d_xpnt,
+            d_coef,
+            d_dens,
+            d_schwarz,
+            d_fock,
             grid_dim=n_blks,
             block_dim=BLK_SIZE,
         )
@@ -561,15 +577,15 @@ fn main() raises:
     var erep = real_t(0.0)
     for i in range(natoms):
         for j in range(natoms):
-            erep += h_fock[i * natoms + j] * h_dens[i * natoms + j]
+            erep += h_fock[unsafe_offset=i * natoms + j] * h_dens[unsafe_offset=i * natoms + j]
 
     if not csv_output:
         print("2e- energy=" + cfmt_f64("%.16f", Float64(erep) * 0.5))
         if run_check and (force_check or natoms <= max_check_atoms):
-            var fock_gpu = alloc[Float64](nsq)
-            var fock_ref = alloc[Float64](nsq)
+            var fock_gpu = unsafe_alloc[Float64](nsq)
+            var fock_ref = unsafe_alloc[Float64](nsq)
             for t in range(nsq):
-                fock_gpu[t] = Float64(h_fock[t])
+                fock_gpu[unsafe_offset=t] = Float64(h_fock[unsafe_offset=t])
             fock_build_cpu(ngauss, natoms, geom_d, xpnt_d, coef_d, dens_d, fock_ref)
 
             var e_gpu = energy_from_fock(fock_gpu, dens_d, natoms)
@@ -583,12 +599,12 @@ fn main() raises:
             var sumsq = Float64(0.0)
             var fscale = Float64(0.0)
             for t in range(nsq):
-                var d = abs(fock_gpu[t] - fock_ref[t])
+                var d = abs(fock_gpu[unsafe_offset=t] - fock_ref[unsafe_offset=t])
                 if d > maxd:
                     maxd = d
                 sumsq += d * d
-                if abs(fock_ref[t]) > fscale:
-                    fscale = abs(fock_ref[t])
+                if abs(fock_ref[unsafe_offset=t]) > fscale:
+                    fscale = abs(fock_ref[unsafe_offset=t])
             var rmsd = sqrt(sumsq / Float64(nsq))
             if fscale == 0.0:
                 fscale = 1.0
@@ -596,7 +612,7 @@ fn main() raises:
             var asym = Float64(0.0)
             for i in range(natoms):
                 for j in range(natoms):
-                    var d = abs(fock_gpu[i * natoms + j] - fock_gpu[j * natoms + i])
+                    var d = abs(fock_gpu[unsafe_offset=i * natoms + j] - fock_gpu[unsafe_offset=j * natoms + i])
                     if d > asym:
                         asym = d
 
@@ -618,8 +634,8 @@ fn main() raises:
                   + cfmt_f64("%.16f", energy_symmetrized(fock_gpu, dens_d, natoms))
                   + "   (diagnostic)")
             print("---------------------------------------------------------------")
-            fock_gpu.free()
-            fock_ref.free()
+            fock_gpu.unsafe_free()
+            fock_ref.unsafe_free()
         elif run_check:
             print("(correctness check skipped: natoms=" + String(natoms) + " > "
                   + String(max_check_atoms) + "; use --check to force)")
@@ -627,7 +643,7 @@ fn main() raises:
         print("backend,GPU,precision,sqrt_mode,natoms,ngauss,exec_time_ms")
         for _ in range(num_iter):
             ctx.synchronize()
-            var ns = ctx.execution_time[launch](1)
+            var ns = ctx.execution_time(launch, 1)
             var ms = Float64(ns) / 1.0e6
             print(
                 "Mojo," + gpu_name + "," + REAL_NAME + "," + SQRT_MODE + ","
@@ -641,6 +657,6 @@ fn main() raises:
     _ = d_dens
     _ = d_fock
     _ = d_schwarz
-    h_xpnt.free(); h_coef.free(); h_geom.free()
-    h_dens.free(); h_fock.free(); h_schwarz.free()
-    xpnt_d.free(); coef_d.free(); geom_d.free(); dens_d.free()
+    h_xpnt.unsafe_free(); h_coef.unsafe_free(); h_geom.unsafe_free()
+    h_dens.unsafe_free(); h_fock.unsafe_free(); h_schwarz.unsafe_free()
+    xpnt_d.unsafe_free(); coef_d.unsafe_free(); geom_d.unsafe_free(); dens_d.unsafe_free()

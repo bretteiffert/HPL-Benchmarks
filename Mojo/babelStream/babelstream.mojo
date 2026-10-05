@@ -1,107 +1,127 @@
-# This Mojo BabelStream port runs copy, multiply, add, triad, and dot kernels with 1024-thread blocks and device-event timing.
-# It defaults to float64 because USE_FLOAT is false; the --float option is a no-op, so changing precision requires editing USE_FLOAT and rebuilding.
-# BS_SM_COUNT must be a positive environment value because the dot grid uses four blocks per SM/CU, and its timed region includes the partial-sum device-to-host copy.
-# The dot uses a shared-memory tree reduction for both precisions, while host buffers are pageable Lists and arithmetic does not request explicit FMA contraction.
+# Mojo 1.0.0 / MAX 26.5 port of the BabelStream GPU benchmark.
+#
+# Preserves the original benchmark behavior:
+#   * copy, mul, add, triad, and dot kernels
+#   * 1024-thread blocks
+#   * device-event timing via DeviceContext.execution_time
+#   * pageable host Lists for result copies
+#   * BS_SM_COUNT controls dot grid size (4 blocks per SM/CU)
+#   * dot timing includes the partial-sum device-to-host copy
+#
+# Mojo 1.0 migration points:
+#   * GPU host/sync APIs moved into the max package
+#   * `def` replaces the old `fn` spelling
+#   * raw pointers use Pointer and unsafe_offset= for unchecked indexing
+#   * enqueue_function takes the kernel function parameter once
+#   * GPU ABI integer arguments use fixed-width integers, not Int
+#   * execution_time uses explicit runtime closure captures
 
-from gpu import thread_idx, block_idx, block_dim, grid_dim, barrier
-from gpu.host import DeviceContext, DeviceBuffer
-from gpu.memory import AddressSpace
-from memory import UnsafePointer, stack_allocation
-from sys import argv, exit
-from os import getenv
-from collections import List
+from std.gpu import thread_idx, block_idx, block_dim, grid_dim
+from max.gpu.host import DeviceContext, DeviceBuffer
+from max.gpu.sync import barrier
+from std.memory import Pointer, stack_allocation, AddressSpace
+from std.sys import argv, exit
+from std.os import getenv
+from std.collections import List
 
-alias IMPLEMENTATION_STRING = "Mojo"
+comptime IMPLEMENTATION_STRING = "Mojo"
 
-alias startA = 0.1
-alias startB = 0.2
-alias startC = 0.0
-alias startScalar = 0.4
+comptime startA = 0.1
+comptime startB = 0.2
+comptime startC = 0.0
+comptime startScalar = 0.4
 
-alias TBSIZE = 1024
+comptime TBSIZE = 1024
 
-alias USE_FLOAT = False
-alias dtype = DType.float32 if USE_FLOAT else DType.float64
+comptime USE_FLOAT = False
+comptime dtype = DType.float32 if USE_FLOAT else DType.float64
 
-fn init_kernel(
-    a: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    b: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    c: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+
+def init_kernel(
+    a: Pointer[Scalar[dtype], MutAnyOrigin],
+    b: Pointer[Scalar[dtype], MutAnyOrigin],
+    c: Pointer[Scalar[dtype], MutAnyOrigin],
     init_a: Scalar[dtype],
     init_b: Scalar[dtype],
     init_c: Scalar[dtype],
 ):
-    var i = block_dim.x * block_idx.x + thread_idx.x
-    a[i] = init_a
-    b[i] = init_b
-    c[i] = init_c
+    var i = Int(block_dim.x * block_idx.x + thread_idx.x)
+    a[unsafe_offset=i] = init_a
+    b[unsafe_offset=i] = init_b
+    c[unsafe_offset=i] = init_c
 
 
-fn copy_kernel(
-    a: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    c: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+def copy_kernel(
+    a: Pointer[Scalar[dtype], MutAnyOrigin],
+    c: Pointer[Scalar[dtype], MutAnyOrigin],
 ):
-    var i = block_dim.x * block_idx.x + thread_idx.x
-    c[i] = a[i]
+    var i = Int(block_dim.x * block_idx.x + thread_idx.x)
+    c[unsafe_offset=i] = a[unsafe_offset=i]
 
 
-fn mul_kernel(
-    b: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    c: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+def mul_kernel(
+    b: Pointer[Scalar[dtype], MutAnyOrigin],
+    c: Pointer[Scalar[dtype], MutAnyOrigin],
 ):
-    alias scalar = Scalar[dtype](startScalar)
-    var i = block_dim.x * block_idx.x + thread_idx.x
-    b[i] = scalar * c[i]
+    comptime scalar = Scalar[dtype](startScalar)
+    var i = Int(block_dim.x * block_idx.x + thread_idx.x)
+    b[unsafe_offset=i] = scalar * c[unsafe_offset=i]
 
 
-fn add_kernel(
-    a: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    b: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    c: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+def add_kernel(
+    a: Pointer[Scalar[dtype], MutAnyOrigin],
+    b: Pointer[Scalar[dtype], MutAnyOrigin],
+    c: Pointer[Scalar[dtype], MutAnyOrigin],
 ):
-    var i = block_dim.x * block_idx.x + thread_idx.x
-    c[i] = a[i] + b[i]
+    var i = Int(block_dim.x * block_idx.x + thread_idx.x)
+    c[unsafe_offset=i] = a[unsafe_offset=i] + b[unsafe_offset=i]
 
 
-fn triad_kernel(
-    a: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    b: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    c: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+def triad_kernel(
+    a: Pointer[Scalar[dtype], MutAnyOrigin],
+    b: Pointer[Scalar[dtype], MutAnyOrigin],
+    c: Pointer[Scalar[dtype], MutAnyOrigin],
 ):
-    alias scalar = Scalar[dtype](startScalar)
-    var i = block_dim.x * block_idx.x + thread_idx.x
-    a[i] = b[i] + scalar * c[i]
+    comptime scalar = Scalar[dtype](startScalar)
+    var i = Int(block_dim.x * block_idx.x + thread_idx.x)
+    a[unsafe_offset=i] = b[unsafe_offset=i] + scalar * c[unsafe_offset=i]
 
 
-fn dot_kernel(
-    a: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    b: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    partial: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    array_size: Int,
+def dot_kernel(
+    a: Pointer[Scalar[dtype], MutAnyOrigin],
+    b: Pointer[Scalar[dtype], MutAnyOrigin],
+    partial: Pointer[Scalar[dtype], MutAnyOrigin],
+    array_size_arg: Int64,
 ):
+    # Int is fine for device-local indexing. Only values crossing the host/device
+    # kernel ABI need a fixed-width integer type in Mojo 1.0.
+    var array_size = Int(array_size_arg)
     var acc = Scalar[dtype](0)
 
     var i = Int(block_dim.x * block_idx.x + thread_idx.x)
     var stride = Int(block_dim.x * grid_dim.x)
     while i < array_size:
-        acc = acc + a[i] * b[i]
+        acc = acc + a[unsafe_offset=i] * b[unsafe_offset=i]
         i += stride
 
     var tb_sum = stack_allocation[
-        TBSIZE, Scalar[dtype], address_space = AddressSpace.SHARED
+        TBSIZE, Scalar[dtype], address_space=AddressSpace.SHARED
     ]()
     var local_i = Int(thread_idx.x)
-    tb_sum[local_i] = acc
+    tb_sum[unsafe_offset=local_i] = acc
 
     var offset = TBSIZE // 2
     while offset > 0:
         barrier()
         if local_i < offset:
-            tb_sum[local_i] = tb_sum[local_i] + tb_sum[local_i + offset]
+            tb_sum[unsafe_offset=local_i] = (
+                tb_sum[unsafe_offset=local_i]
+                + tb_sum[unsafe_offset=local_i + offset]
+            )
         offset //= 2
 
     if local_i == 0:
-        partial[block_idx.x] = tb_sum[0]
+        partial[unsafe_offset=Int(block_idx.x)] = tb_sum[unsafe_offset=0]
 
 
 struct MojoStream:
@@ -118,7 +138,7 @@ struct MojoStream:
 
     var last_kernel_time: Float64
 
-    fn __init__(out self, array_size: Int, device_index: Int) raises:
+    def __init__(out self, array_size: Int, device_index: Int) raises:
         if array_size % TBSIZE != 0:
             raise Error("Array size must be a multiple of " + String(TBSIZE))
 
@@ -161,140 +181,154 @@ struct MojoStream:
 
         self.warmup()
 
-    fn warmup(mut self) raises:
+    def warmup(mut self) raises:
         var n = TBSIZE
         var w_a = self.ctx.enqueue_create_buffer[dtype](n)
         var w_b = self.ctx.enqueue_create_buffer[dtype](n)
         var w_c = self.ctx.enqueue_create_buffer[dtype](n)
         var w_sum = self.ctx.enqueue_create_buffer[dtype](self.dot_num_blocks)
 
-        self.ctx.enqueue_function[init_kernel, init_kernel](
-            w_a.unsafe_ptr(), w_b.unsafe_ptr(), w_c.unsafe_ptr(),
-            Scalar[dtype](startA), Scalar[dtype](startB), Scalar[dtype](startC),
-            grid_dim=1, block_dim=TBSIZE,
+        self.ctx.enqueue_function[init_kernel](
+            w_a,
+            w_b,
+            w_c,
+            Scalar[dtype](startA),
+            Scalar[dtype](startB),
+            Scalar[dtype](startC),
+            grid_dim=1,
+            block_dim=TBSIZE,
         )
-        self.ctx.enqueue_function[copy_kernel, copy_kernel](
-            w_a.unsafe_ptr(), w_c.unsafe_ptr(), grid_dim=1, block_dim=TBSIZE
+        self.ctx.enqueue_function[copy_kernel](
+            w_a, w_c, grid_dim=1, block_dim=TBSIZE
         )
-        self.ctx.enqueue_function[mul_kernel, mul_kernel](
-            w_b.unsafe_ptr(), w_c.unsafe_ptr(), grid_dim=1, block_dim=TBSIZE
+        self.ctx.enqueue_function[mul_kernel](
+            w_b, w_c, grid_dim=1, block_dim=TBSIZE
         )
-        self.ctx.enqueue_function[add_kernel, add_kernel](
-            w_a.unsafe_ptr(), w_b.unsafe_ptr(), w_c.unsafe_ptr(),
-            grid_dim=1, block_dim=TBSIZE,
+        self.ctx.enqueue_function[add_kernel](
+            w_a, w_b, w_c, grid_dim=1, block_dim=TBSIZE
         )
-        self.ctx.enqueue_function[triad_kernel, triad_kernel](
-            w_a.unsafe_ptr(), w_b.unsafe_ptr(), w_c.unsafe_ptr(),
-            grid_dim=1, block_dim=TBSIZE,
+        self.ctx.enqueue_function[triad_kernel](
+            w_a, w_b, w_c, grid_dim=1, block_dim=TBSIZE
         )
-        self.ctx.enqueue_function[dot_kernel, dot_kernel](
-            w_a.unsafe_ptr(), w_b.unsafe_ptr(), w_sum.unsafe_ptr(), n,
-            grid_dim=self.dot_num_blocks, block_dim=TBSIZE,
+        self.ctx.enqueue_function[dot_kernel](
+            w_a,
+            w_b,
+            w_sum,
+            Int64(n),
+            grid_dim=self.dot_num_blocks,
+            block_dim=TBSIZE,
         )
         self.ctx.enqueue_copy(dst_ptr=self.sums.unsafe_ptr(), src_buf=w_sum)
         self.ctx.synchronize()
 
-    fn get_time_taken(self) -> Float64:
+    def get_time_taken(self) -> Float64:
         return self.last_kernel_time
 
-    fn init_arrays(mut self) raises:
+    def init_arrays(mut self) raises:
         var n = self.array_size
-        var a = self.d_a.unsafe_ptr()
-        var b = self.d_b.unsafe_ptr()
-        var c = self.d_c.unsafe_ptr()
+        var d_a = self.d_a
+        var d_b = self.d_b
+        var d_c = self.d_c
 
-        @parameter
         @always_inline
-        fn body(ctx: DeviceContext) raises:
-            ctx.enqueue_function[init_kernel, init_kernel](
-                a, b, c,
-                Scalar[dtype](startA), Scalar[dtype](startB), Scalar[dtype](startC),
-                grid_dim=n // TBSIZE, block_dim=TBSIZE,
+        def body(ctx: DeviceContext) raises {d_a, d_b, d_c, n}:
+            ctx.enqueue_function[init_kernel](
+                d_a,
+                d_b,
+                d_c,
+                Scalar[dtype](startA),
+                Scalar[dtype](startB),
+                Scalar[dtype](startC),
+                grid_dim=n // TBSIZE,
+                block_dim=TBSIZE,
             )
 
-        var ns = self.ctx.execution_time[body](1)
+        var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = Float64(ns) * 1.0e-9
 
-    fn copy(mut self) raises:
+    def copy(mut self) raises:
         var n = self.array_size
-        var a = self.d_a.unsafe_ptr()
-        var c = self.d_c.unsafe_ptr()
+        var d_a = self.d_a
+        var d_c = self.d_c
 
-        @parameter
         @always_inline
-        fn body(ctx: DeviceContext) raises:
-            ctx.enqueue_function[copy_kernel, copy_kernel](
-                a, c, grid_dim=n // TBSIZE, block_dim=TBSIZE
+        def body(ctx: DeviceContext) raises {d_a, d_c, n}:
+            ctx.enqueue_function[copy_kernel](
+                d_a, d_c, grid_dim=n // TBSIZE, block_dim=TBSIZE
             )
 
-        var ns = self.ctx.execution_time[body](1)
+        var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = Float64(ns) * 1.0e-9
 
-    fn mul(mut self) raises:
+    def mul(mut self) raises:
         var n = self.array_size
-        var b = self.d_b.unsafe_ptr()
-        var c = self.d_c.unsafe_ptr()
+        var d_b = self.d_b
+        var d_c = self.d_c
 
-        @parameter
         @always_inline
-        fn body(ctx: DeviceContext) raises:
-            ctx.enqueue_function[mul_kernel, mul_kernel](
-                b, c, grid_dim=n // TBSIZE, block_dim=TBSIZE
+        def body(ctx: DeviceContext) raises {d_b, d_c, n}:
+            ctx.enqueue_function[mul_kernel](
+                d_b, d_c, grid_dim=n // TBSIZE, block_dim=TBSIZE
             )
 
-        var ns = self.ctx.execution_time[body](1)
+        var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = Float64(ns) * 1.0e-9
 
-    fn add(mut self) raises:
+    def add(mut self) raises:
         var n = self.array_size
-        var a = self.d_a.unsafe_ptr()
-        var b = self.d_b.unsafe_ptr()
-        var c = self.d_c.unsafe_ptr()
+        var d_a = self.d_a
+        var d_b = self.d_b
+        var d_c = self.d_c
 
-        @parameter
         @always_inline
-        fn body(ctx: DeviceContext) raises:
-            ctx.enqueue_function[add_kernel, add_kernel](
-                a, b, c, grid_dim=n // TBSIZE, block_dim=TBSIZE
+        def body(ctx: DeviceContext) raises {d_a, d_b, d_c, n}:
+            ctx.enqueue_function[add_kernel](
+                d_a, d_b, d_c, grid_dim=n // TBSIZE, block_dim=TBSIZE
             )
 
-        var ns = self.ctx.execution_time[body](1)
+        var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = Float64(ns) * 1.0e-9
 
-    fn triad(mut self) raises:
+    def triad(mut self) raises:
         var n = self.array_size
-        var a = self.d_a.unsafe_ptr()
-        var b = self.d_b.unsafe_ptr()
-        var c = self.d_c.unsafe_ptr()
+        var d_a = self.d_a
+        var d_b = self.d_b
+        var d_c = self.d_c
 
-        @parameter
         @always_inline
-        fn body(ctx: DeviceContext) raises:
-            ctx.enqueue_function[triad_kernel, triad_kernel](
-                a, b, c, grid_dim=n // TBSIZE, block_dim=TBSIZE
+        def body(ctx: DeviceContext) raises {d_a, d_b, d_c, n}:
+            ctx.enqueue_function[triad_kernel](
+                d_a, d_b, d_c, grid_dim=n // TBSIZE, block_dim=TBSIZE
             )
 
-        var ns = self.ctx.execution_time[body](1)
+        var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = Float64(ns) * 1.0e-9
 
-    fn dot(mut self) raises -> Scalar[dtype]:
+    def dot(mut self) raises -> Scalar[dtype]:
         var n = self.array_size
         var nb = self.dot_num_blocks
-        var a = self.d_a.unsafe_ptr()
-        var b = self.d_b.unsafe_ptr()
+        var d_a = self.d_a
+        var d_b = self.d_b
         var d_sum = self.d_sum
-        var sums_ptr = self.sums.unsafe_ptr()
+        # Mojo 1.0.0 has an origin-lowering issue when a List-derived Pointer
+        # is captured by a closure. execution_time() executes this callback
+        # synchronously while self.sums is alive, so erase the tracked origin
+        # for the capture to avoid the false same-type/ref conversion error.
+        var sums_ptr = self.sums.unsafe_ptr().as_unsafe_any_origin()
 
-        @parameter
         @always_inline
-        fn body(ctx: DeviceContext) raises:
-            ctx.enqueue_function[dot_kernel, dot_kernel](
-                a, b, d_sum.unsafe_ptr(), n,
-                grid_dim=nb, block_dim=TBSIZE,
+        def body(ctx: DeviceContext) raises {d_a, d_b, d_sum, n, nb, sums_ptr}:
+            ctx.enqueue_function[dot_kernel](
+                d_a,
+                d_b,
+                d_sum,
+                Int64(n),
+                grid_dim=nb,
+                block_dim=TBSIZE,
             )
             ctx.enqueue_copy(dst_ptr=sums_ptr, src_buf=d_sum)
 
-        var ns = self.ctx.execution_time[body](1)
+        var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = Float64(ns) * 1.0e-9
 
         var total = Scalar[dtype](0)
@@ -302,7 +336,7 @@ struct MojoStream:
             total += self.sums[i]
         return total
 
-    fn read_arrays(
+    def read_arrays(
         self,
         mut a: List[Scalar[dtype]],
         mut b: List[Scalar[dtype]],
@@ -314,7 +348,7 @@ struct MojoStream:
         self.ctx.synchronize()
 
 
-fn kahan_sum(v: List[Scalar[dtype]], n: Int) -> Float64:
+def kahan_sum(v: List[Scalar[dtype]], n: Int) -> Float64:
     var s = Float64(0.0)
     var comp = Float64(0.0)
     for i in range(n):
@@ -325,7 +359,7 @@ fn kahan_sum(v: List[Scalar[dtype]], n: Int) -> Float64:
     return s
 
 
-fn metrics(
+def metrics(
     v: List[Scalar[dtype]],
     n: Int,
     gold: Scalar[dtype],
@@ -350,7 +384,7 @@ fn metrics(
     max_rel_err = max_err
 
 
-fn check_solution(
+def check_solution(
     ntimes: Int,
     a: List[Scalar[dtype]],
     b: List[Scalar[dtype]],
@@ -384,7 +418,11 @@ fn check_solution(
     var actual_dot = Float64(dot_sum)
 
     var product_magnitude = abs(Float64(goldA) * Float64(goldB))
-    var tiny = Float64(1.17549435e-38) if USE_FLOAT else Float64(2.2250738585072014e-308)
+    var tiny = (
+        Float64(1.17549435e-38)
+        if USE_FLOAT
+        else Float64(2.2250738585072014e-308)
+    )
     var dot_underflows = product_magnitude < tiny
 
     var dot_err = Float64(0)
@@ -412,14 +450,14 @@ fn check_solution(
         )
 
 
-struct Args(Copyable, Movable):
+struct Args(Copyable):
     var array_size: Int
     var num_times: Int
     var device_index: Int
     var mibibytes: Bool
     var csv_output: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.array_size = 33554432
         self.num_times = 1000
         self.device_index = 0
@@ -427,7 +465,7 @@ struct Args(Copyable, Movable):
         self.csv_output = False
 
 
-fn print_help():
+def print_help():
     print("")
     print("Usage: babelstream [OPTIONS]")
     print("")
@@ -438,11 +476,14 @@ fn print_help():
     print("  -s  --arraysize  SIZE    Use SIZE elements in the array")
     print("  -n  --numtimes   NUM     Run the test NUM times (NUM >= 2)")
     print("      --float              Use floats (no-op, float is already default)")
-    print("      --mibibytes          Use MiB=2^20 for bandwidth calculation (default MB=10^6)")
+    print(
+        "      --mibibytes          Use MiB=2^20 for bandwidth calculation "
+        "(default MB=10^6)"
+    )
     print("")
 
 
-fn parse_arguments() raises -> Args:
+def parse_arguments() raises -> Args:
     var args = Args()
     var av = argv()
     var i = 1
@@ -494,18 +535,26 @@ fn parse_arguments() raises -> Args:
     return args^
 
 
-fn main() raises:
+def main() raises:
     var args = parse_arguments()
 
-    alias bpe = 4 if USE_FLOAT else 8
+    comptime bpe = 4 if USE_FLOAT else 8
     var n = args.array_size
 
     if not args.csv_output:
         print("Running kernels", args.num_times, "times")
         print("Precision:", "float" if USE_FLOAT else "double")
         if args.mibibytes:
-            print("Array size:", Float64(n * bpe) / (1024.0 * 1024.0), "MiB")
-            print("Total size:", 3.0 * Float64(n * bpe) / (1024.0 * 1024.0), "MiB")
+            print(
+                "Array size:",
+                Float64(n * bpe) / (1024.0 * 1024.0),
+                "MiB",
+            )
+            print(
+                "Total size:",
+                3.0 * Float64(n * bpe) / (1024.0 * 1024.0),
+                "MiB",
+            )
         else:
             print("Array size:", Float64(n * bpe) * 1.0e-6, "MB")
             print("Total size:", 3.0 * Float64(n * bpe) * 1.0e-6, "MB")
@@ -537,17 +586,29 @@ fn main() raises:
     var init_bw = (scale * Float64(3 * bpe * n)) / init_elapsed_s
 
     if not args.csv_output:
-        print("Init:", init_elapsed_s, "s (=", init_bw,
-              "MiBytes/sec" if args.mibibytes else "GBytes/sec", ")")
-        print("Function    ",
-              "MiBytes/sec " if args.mibibytes else "GBytes/sec  ",
-              "Min (sec)   Max         Average")
+        print(
+            "Init:",
+            init_elapsed_s,
+            "s (=",
+            init_bw,
+            "MiBytes/sec" if args.mibibytes else "GBytes/sec",
+            ")",
+        )
+        print(
+            "Function    ",
+            "MiBytes/sec " if args.mibibytes else "GBytes/sec  ",
+            "Min (sec)   Max         Average",
+        )
     else:
         print("backend,GPU,precision,vec_size,routine,BW_GBs")
 
     var labels: List[String] = ["Copy", "Mul", "Add", "Triad", "Dot"]
     var sizes: List[Int] = [
-        2 * bpe * n, 2 * bpe * n, 3 * bpe * n, 3 * bpe * n, 2 * bpe * n
+        2 * bpe * n,
+        2 * bpe * n,
+        3 * bpe * n,
+        3 * bpe * n,
+        2 * bpe * n,
     ]
     var precname = "float32" if USE_FLOAT else "float64"
     var gpu_name = stream.ctx.name()
@@ -566,12 +627,26 @@ fn main() raises:
         var average = total / Float64(len(timings[i]) - 1)
 
         if not args.csv_output:
-            print(labels[i], scale * Float64(sizes[i]) / tmin, tmin, tmax, average)
+            print(
+                labels[i],
+                scale * Float64(sizes[i]) / tmin,
+                tmin,
+                tmax,
+                average,
+            )
         else:
             for j in range(len(timings[i])):
                 print(
-                    IMPLEMENTATION_STRING + "," + gpu_name + "," + precname
-                    + "," + String(n) + "," + labels[i] + ","
+                    IMPLEMENTATION_STRING
+                    + ","
+                    + gpu_name
+                    + ","
+                    + precname
+                    + ","
+                    + String(n)
+                    + ","
+                    + labels[i]
+                    + ","
                     + String(1.0e-9 * Float64(sizes[i]) / timings[i][j])
                 )
 
