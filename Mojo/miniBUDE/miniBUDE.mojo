@@ -23,7 +23,7 @@ comptime DEFAULT_DATA_DIR = "../../data/miniBUDE/bm1"
 
 comptime REPORT_TOLERANCE_PCT = 0.025
 
-comptime PRECISION_BITS = 64
+comptime PRECISION_BITS = 32
 
 comptime FP = DType.float32 if PRECISION_BITS == 32 else DType.float64
 

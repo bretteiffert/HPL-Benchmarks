@@ -1,12 +1,14 @@
-## Hartree-Fock - HIP
+# Hartree-Fock - HIP
 
-Run a single customized configuration or an input-size sweep on an AMD GPU with ROCm/HIP.
+## Configuration
 
-### Configuration
+Precision is selected at compile time in `hartree-fock.cc`:
 
-Set `PRECISION` in `hartree-fock.cc` to `64` or `32`.
+```cpp
+#define PRECISION 64
+```
 
-### Build and run
+## Build
 
 The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` from ROCm.
 
@@ -14,16 +16,14 @@ The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` 
 make
 ```
 
-Run one configuration:
+## Run one
 
 ```sh
 ./hartree-fock-hip ../../data/hartree-fock/he64 --csv --iters=10
 ```
 
-Run the supplied input-size sweep:
+## Run the sweep
 
 ```sh
 source run_hip.sh
 ```
-
-The sweep currently passes an unrecognized `--input` option; the executable ignores it and uses its default of 10 iterations.
