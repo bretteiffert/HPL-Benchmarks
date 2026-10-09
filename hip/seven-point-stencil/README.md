@@ -1,12 +1,15 @@
-## Seven-point Stencil - HIP
+# Seven-point Stencil - HIP
 
-Run a single customized configuration or a workgroup sweep on an AMD GPU with ROCm/HIP.
+## Configuration
 
-### Configuration
+Precision is selected at compile time in `laplacian.cpp`
 
-Set the precision in `laplacian.cpp`. Use `using precision = double;` and `precision_str = "double"`, or `using precision = float;` and `precision_str = "single"`.
+```cpp
+using precision = double;
+char precision_str[] = "double";
+```
 
-### Build and run
+## Build and run
 
 The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` from ROCm.
 
@@ -14,16 +17,14 @@ The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` 
 make
 ```
 
-Run one configuration:
+## Run one
 
 ```sh
 ./laplacian_kernel 1024 1024 1024 512 1 1
 ```
 
-Run the supplied workgroup sweep:
+## Run the sweep
 
 ```sh
 source run_hip.sh
 ```
-
-The default `1024^3` grid requires about 16 GiB for the two double-precision arrays, excluding runtime overhead.

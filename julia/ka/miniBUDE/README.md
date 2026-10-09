@@ -8,10 +8,9 @@ Select precision in both `cuda/miniBUDE.jl` and `hip/miniBUDE.jl`:
 
 ```julia
 const PRECISION_BITS = 64 # Float64
-const PRECISION_BITS = 32 # Float32
 ```
 
-Select the backend with `STENCIL_GPU=cuda` for NVIDIA or `STENCIL_GPU=amdgpu` for AMD. Use the matching project below because each project contains only its vendor GPU package.
+Select the backend with `STENCIL_GPU=cuda` for NVIDIA or `STENCIL_GPU=amdgpu` for AMD
 
 ## Setup
 

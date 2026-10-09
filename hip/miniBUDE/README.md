@@ -1,12 +1,14 @@
-## miniBUDE - HIP
+# miniBUDE - HIP
 
-Run a single customized configuration or a poses-per-work-item sweep on an AMD GPU with ROCm/HIP.
+## Configuration
 
-### Configuration
+Precision is selected at compile time in `main.cpp`:
 
-Set `PRECISION_BITS` in `main.cpp` to `64` or `32`. The included sweep uses the `bm1` deck, workgroups of 64 threads, and PPWI values from 1 through 128.
+```cpp
+#define PRECISION_BITS 64
+```
 
-### Build and run
+## Build
 
 The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` from ROCm.
 
@@ -14,13 +16,13 @@ The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` 
 make
 ```
 
-Run one configuration:
+## Run one
 
 ```sh
 ./bude-hip --deck ../../data/miniBUDE/bm1 -p 64 -w 64
 ```
 
-Run the supplied PPWI sweep:
+## Run the sweep
 
 ```sh
 source run_hip.sh
