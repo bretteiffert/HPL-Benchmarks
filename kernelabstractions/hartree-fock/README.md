@@ -2,10 +2,12 @@
 
 ## Setup
 
-Generate each manifest from its project file:
-
 ```bash
 julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
+```
+
+or
+```bash
 julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
 ```
 
@@ -14,8 +16,12 @@ julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
 The input file is the first argument. Backend selection is per invocation:
 
 ```bash
-julia --project=env/cuda -O3 --check-bounds=no hartree-fock.jl input.dat --backend cuda -n 10
-julia --project=env/hip -O3 --check-bounds=no hartree-fock.jl input.dat --backend hip -n 10
+julia --project=env/cuda -O3 --check-bounds=no hartree-fock.jl ../../data/hartree-fock/he128 --backend cuda -n 10
+```
+
+or
+```bash
+julia --project=env/hip -O3 --check-bounds=no hartree-fock.jl ../../data/hartree-fock/he128 --backend hip -n 10
 ```
 
 Supported options:
@@ -37,8 +43,12 @@ uses its default visible GPU; there is no device-index argument.
 ## Sweep scripts
 
 ```bash
-INPUT=/path/to/input.dat bash run_cuda.sh
-INPUT=/path/to/input.dat bash run_hip.sh
+INPUT=../../data/hartree-fock/he128 bash run_cuda.sh
+```
+
+or
+```bash
+INPUT=../../data/hartree-fock/he128 bash run_hip.sh
 ```
 
 CSV columns:
