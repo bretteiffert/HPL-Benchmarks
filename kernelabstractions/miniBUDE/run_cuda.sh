@@ -3,19 +3,37 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 JULIA_BIN="${JULIA_BIN:-julia}"
-DECK="${DECK:-}"
+DECK="${DECK:-$SCRIPT_DIR/../../data/miniBUDE/bm1}"
 NUM_TIMES="${NUM_TIMES:-8}"
 PRECISION="${PRECISION:-64}"
 POSES="${POSES:-0}"
-PPWI="${PPWI:-1}"
-WGSIZE="${WGSIZE:-1}"
+WGSIZE="${WGSIZE:-32}"
 
-if [[ -z "$DECK" ]]; then
-  echo "Set DECK to a miniBUDE deck directory." >&2
+echo "miniBUDE - KernelAbstractions, CUDA" >&2
+
+PPWI_CONFIGS=(
+  "1"
+  "2"
+  "4"
+  "8"
+  "16"
+  "32"
+  "64"
+  "128"
+)
+
+if [[ -n "${PPWI:-}" ]]; then
+  PPWI_CONFIGS=("$PPWI")
+fi
+
+if [[ ! -d "$DECK" ]]; then
+  echo "Deck directory not found: $DECK" >&2
   exit 1
 fi
 
-"$JULIA_BIN" --project="$SCRIPT_DIR/env/cuda" -O3 --check-bounds=no \
-  "$SCRIPT_DIR/miniBUDE.jl" --backend cuda --deck "$DECK" \
-  -n "$NUM_TIMES" -p "$PRECISION" --poses "$POSES" \
-  --ppwi "$PPWI" --wgsize "$WGSIZE"
+for ppwi in "${PPWI_CONFIGS[@]}"; do
+  "$JULIA_BIN" --project="$SCRIPT_DIR/env/cuda" -O3 --check-bounds=no \
+    "$SCRIPT_DIR/miniBUDE.jl" --backend cuda --deck "$DECK" \
+    -n "$NUM_TIMES" -p "$PRECISION" --poses "$POSES" \
+    --ppwi "$ppwi" --wgsize "$WGSIZE" --csv
+done

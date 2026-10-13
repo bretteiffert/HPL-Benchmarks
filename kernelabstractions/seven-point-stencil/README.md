@@ -2,24 +2,26 @@
 
 ## Setup
 
-From this directory, instantiate the environment for the GPU being used:
-
 ```bash
 julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
+```
+
+or
+```bash
 julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
 ```
 
 ## Run
 
-The benchmark uses the default GPU visible to the selected vendor runtime.
-There is no device-index argument and no `STENCIL_GPU` environment variable.
-
 ```bash
 julia --project=env/cuda -O3 --check-bounds=no seven-point-stencil.jl \
   --backend cuda -s 256 -n 100 -p 32
+```
 
+or
+```bash
 julia --project=env/hip -O3 --check-bounds=no seven-point-stencil.jl \
-  --backend hip -s 256 -n 100 -p 32
+  --backend hip -s 256 -n 100 -p 64
 ```
 
 Options:
@@ -44,6 +46,10 @@ variables:
 
 ```bash
 SIZE=512 NUM_TIMES=100 PRECISION=64 bash run_cuda.sh
+```
+
+or
+```bash
 SIZE=512 NUM_TIMES=100 PRECISION=32 bash run_hip.sh
 ```
 
@@ -60,4 +66,10 @@ Correctness diagnostics are written to stderr:
 ```bash
 julia --project=env/cuda seven-point-stencil.jl \
   --backend cuda -s 256 -n 10 --csv > results.csv
+```
+
+or
+```bash
+julia --project=env/hip seven-point-stencil.jl \
+  --backend hip -s 256 -n 10 --csv > results.csv
 ```

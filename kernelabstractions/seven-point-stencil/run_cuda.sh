@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 JULIA_BIN="${JULIA_BIN:-julia}"
-SIZE_CONFIGS=("128" "256" "512")
+SIZE_CONFIGS=("128" "256" "512" "1024")
 NUM_TIMES="${NUM_TIMES:-100}"
 PRECISION="${PRECISION:-64}"
 

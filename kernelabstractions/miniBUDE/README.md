@@ -2,10 +2,12 @@
 
 ## Setup
 
-From this directory, generate each environment's manifest:
-
 ```bash
 julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
+```
+
+or
+```bash
 julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
 ```
 
@@ -17,7 +19,10 @@ Override it with `--deck` when needed.
 ```bash
 julia --project=env/cuda -O3 --check-bounds=no miniBUDE.jl \
   --backend cuda -n 8 -p 64
+```
 
+or
+```bash
 julia --project=env/hip -O3 --check-bounds=no miniBUDE.jl \
   --backend hip -n 8 -p 64
 ```
@@ -44,14 +49,23 @@ device support.
 ## Sweep scripts
 
 ```bash
-DECK=../../data/miniBUDE/bm1 bash run_cuda.sh
-DECK=../../data/miniBUDE/bm1 bash run_hip.sh
+bash run_cuda.sh
+```
+
+or
+```bash
+bash run_hip.sh
 ```
 
 Optional overrides:
 
 ```bash
 DECK=../../data/miniBUDE/bm1 PRECISION=32 NUM_TIMES=20 bash run_cuda.sh
+```
+
+or
+```bash
+DECK=../../data/miniBUDE/bm1 PRECISION=64 NUM_TIMES=20 bash run_hip.sh
 ```
 
 CSV output contains precision, PPWI, work-group, timing, throughput, and

@@ -3,6 +3,11 @@
 ## Setup
 
 ```bash
+julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
+```
+
+or
+```bash
 julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
 ```
 
@@ -14,6 +19,10 @@ Select the backend per invocation:
 julia --project=env/cuda -O3 --check-bounds=no babelstream.jl \
   --backend cuda -s 33554432 -n 1000 -p 64
 
+```
+
+or
+```bash
 julia --project=env/hip -O3 --check-bounds=no babelstream.jl \
   --backend hip -s 33554432 -n 1000 -p 64
 ```
@@ -32,10 +41,15 @@ Supported options:
 Defaults are `cuda`, `33554432` elements, `1000` iterations, and Float64.
 Precision is selected at runtime.
 
-## CUDA sweep
+## Sweep scripts
 
 ```bash
 bash run_cuda.sh
+```
+
+or
+```bash
+bash run_hip.sh
 ```
 
 Override precision or iteration count when needed:
@@ -44,16 +58,9 @@ Override precision or iteration count when needed:
 PRECISION=64 NUM_TIMES=100 bash run_cuda.sh
 ```
 
-## HIP sweep
-
+or
 ```bash
-bash run_hip.sh
-```
-
-Override precision or iteration count when needed:
-
-```bash
-PRECISION=32 NUM_TIMES=100 bash run_hip.sh
+PRECISION=64 NUM_TIMES=100 bash run_hip.sh
 ```
 
 ## CSV output
@@ -67,5 +74,10 @@ backend,GPU,precision,vec_size,routine,BW_GBs
 Correctness diagnostics are written to stderr:
 
 ```bash
-julia --project=. babelstream.jl --backend cuda -s 1048576 -n 10 --csv
+julia --project=env/cuda babelstream.jl --backend cuda -s 1048576 -n 10 --csv
+```
+
+or
+```bash
+julia --project=env/hip babelstream.jl --backend hip -s 1048576 -n 10 --csv
 ```

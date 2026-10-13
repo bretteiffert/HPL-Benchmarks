@@ -374,6 +374,7 @@ import SpecialFunctions
 
 function _erf_selftest_kernel!(out)
     @inbounds out[1] = SpecialFunctions.erf(3.0)
+    return nothing
 end
 
 if SELECTED_BACKEND === :cuda
