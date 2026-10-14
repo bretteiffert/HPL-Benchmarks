@@ -6,7 +6,7 @@ show_help() {
     cat <<'EOF'
 Usage:
   ./run.sh --stencil
-  ./run.sh --babelStream
+  ./run.sh --babelstream
   ./run.sh --hartree-fock
   ./run.sh --miniBUDE
   ./run.sh --all
@@ -24,16 +24,16 @@ run_stencil() {
 
 }
 
-run_babel_stream() {
+run_babelstream() {
     source hudson_setup.sh
-    bash cuda/babelStream/run_cuda.sh >> output/babelstream/cuda_cuda.txt;
-    bash cubecl/babelStream/run_cuda.sh >> output/babelstream/cubecl_cuda.txt;
-    bash kernelabstractions/babelStream/cuda/run_cuda.sh >> output/babelstream/ka_cuda.txt;
-    bash Mojo/babelStream/run_cuda.sh >> output/babelstream/Mojo_cuda.txt;
-    bash triton/babelStream/run_cuda.sh >> output/babelstream/triton_cuda.txt;
+    bash cuda/babelstream/run_cuda.sh >> output/babelstream/cuda_cuda.txt;
+    bash cubecl/babelstream/run_cuda.sh >> output/babelstream/cubecl_cuda.txt;
+    bash kernelabstractions/babelstream/cuda/run_cuda.sh >> output/babelstream/ka_cuda.txt;
+    bash Mojo/babelstream/run_cuda.sh >> output/babelstream/Mojo_cuda.txt;
+    bash triton/babelstream/run_cuda.sh >> output/babelstream/triton_cuda.txt;
 }
 
-run_hartree_fock() {
+run_hartreefock() {
     source hudson_setup.sh
     bash cuda/hartree-fock/run_cuda.sh >> output/hartree-fock/cuda_cuda.txt;
     bash cubecl/hartree-fock/run_cuda.sh >> output/hartree-fock/cubecl_cuda.txt;
@@ -42,7 +42,7 @@ run_hartree_fock() {
     bash triton/hartree-fock/run_cuda.sh >> output/hartree-fock/triton_cuda.txt;
 }
 
-run_mini_bude() {
+run_minibude() {
     source hudson_setup.sh
     bash cuda/miniBUDE/run_cuda.sh >> output/miniBUDE/cuda_cuda.txt;
     bash cubecl/miniBUDE/run_cuda.sh >> output/miniBUDE/cubecl_cuda.txt;
@@ -53,8 +53,9 @@ run_mini_bude() {
 
 run_all() {
     run_stencil;
-    run_babel_stream;
+    run_babelstream;
     run_hartree_fock;
+    run_minibude
 }
 
 if [[ $# -eq 0 ]]; then
@@ -67,13 +68,13 @@ case "$1" in
         run_stencil
         ;;
     --babelStream)
-        run_babel_stream
+        run_babelstream
         ;;
     --hartree-fock)
-        run_hartree_fock
+        run_hartreefock
         ;;
     --miniBUDE)
-        run_mini_bude
+        run_minibude
         ;;
     --all)
         run_all
