@@ -1,30 +1,40 @@
-# Seven-point Stencil - HIP
+# Seven-Point Stencil - Native HIP
+
+## Setup
+
+Install ROCm (HIP 5.x or newer, `hipcc`) and the AMD GPU driver, and set the vendor path.
+
+    export HIP_PATH=[path-to-rocm]
+
+The build links libkernelenergy.so from ../../dependencies, so build that library first.
+
+    make                  # detects the GPU architecture with amdgpu-arch or rocminfo
+    make ARCH=gfx90a      # or name it, e.g. on a build node without a GPU
+
+This creates `./laplacian_kernel_hip`. `HIPCC` defaults to `$HIP_PATH/bin/hipcc` (HIP_PATH defaults to /opt/rocm).
 
 ## Configuration
 
-Precision is selected at compile time in `laplacian.cpp`
+Precision is selected at run time with a flag:
 
-```cpp
-using precision = double;
-char precision_str[] = "double";
-```
+    --double   # fp64, the default
+    --float    # fp32
+    --half     # fp16; up to 105 points per side, where the centre coefficient fits in fp16
 
-## Build and run
+Other options: `-s L` for an L × L × L grid (default 1024) or `--grid X,Y,Z`, `--block-size X[,Y[,Z]]` (default 1024,1,1), `-n NUM` timed runs after one untimed run (default 100), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
-The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` from ROCm.
+Bandwidth uses the theoretical traffic: every point is read except the 8 corners and 12 edges, and every interior point is written. The correctness check compares the interior with the exact Laplacian 3.
 
-```sh
-make
-```
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
-## Run one
+## AMD ROCm/HIP
 
-```sh
-./laplacian_kernel 1024 1024 1024 512 1 1
-```
+Run one
 
-## Run the sweep
+    ./laplacian_kernel_hip -s 1024 --block-size 1024,1,1
 
-```sh
-source run_hip.sh
-```
+Run the sweep
+
+    bash run.sh
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh --float --csv > results.csv`.

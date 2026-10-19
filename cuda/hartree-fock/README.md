@@ -1,29 +1,39 @@
 # Hartree-Fock - Native CUDA
 
-## Prerequisites and build
+## Setup
 
-The build requires the CUDA toolkit (`nvcc`) and a C++ host compiler. The makefile detects the GPU and compiles for that architecture.
+Install the CUDA toolkit (`nvcc`, CUDA 11 or newer for C++17), a C++17 host compiler (`g++` by default), and the NVIDIA driver, and set the vendor path.
 
-```sh
-make
-```
+    export CUDA_PATH=[path-to-cuda]
 
-## Precision and configuration
+The build links libkernelenergy.so from ../../dependencies, so build that library first. Inputs are read from ../../data/hartree-fock.
 
-Precision is selected at compile time in `hartree-fock.cu`:
+    make                  # detects the GPU architecture with nvidia-smi
+    make ARCH=90          # or name it, e.g. on a build node without a GPU
 
-```cpp
-#define PRECISION 64
-```
+This creates `./hartree-fock-cuda`. The host compiler is pinned to `g++` (`make HOST_CXX=...` to change it), so an exported `CC=nvc` does not leak in. `--double` needs `atomicAdd` on double, so the GPU must be compute capability 6.0 or newer.
 
-## Run one configuration
+## Configuration
 
-```sh
-./hartree-fock-cuda ../../data/hartree-fock/he64 --csv --iters=10
-```
+Precision is selected at run time with a flag:
 
-## Run the sweep
+    --double   # fp64, the default
+    --float    # fp32
 
-```sh
-bash run_cuda.sh
-```
+Other options: `-n NUM` timed builds after one untimed build (default 10), `--legacy-sqrt` (Boys-function square roots in fp32 whatever the precision, as the old mixed-precision build did), `--block-size N` (default 256), `--device INDEX`, `--list`, `--check` / `--no-check` / `--max-check-atoms N` (the fp64 CPU reference runs automatically up to 128 atoms), `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+
+Timed builds add into the same Fock matrix, as in the original benchmark; the 2e- energy checksum and the correctness check use the untimed first build.
+
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
+
+## NVIDIA CUDA
+
+Run one
+
+    ./hartree-fock-cuda ../../data/hartree-fock/he64 -n 10
+
+Run the sweep
+
+    bash run.sh
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh --float --csv > results.csv`.
