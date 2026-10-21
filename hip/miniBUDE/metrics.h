@@ -1,6 +1,5 @@
-// Provides informational correctness metrics without a pass/fail gate for the HIP miniBUDE driver. It computes compensated L2, RMS, signed, maximum, non-finite, and tolerance counts, plus ULP distances after rounding both operands to the tested precision. Deck references are used for norm comparisons but not meaningful ULP analysis because their text representation has limited precision.
+// Provides backend-independent, informational correctness metrics without a pass/fail gate. It computes compensated L2, RMS, signed, maximum, non-finite, and tolerance counts, plus ULP distances after rounding both operands to the tested precision. Deck references are used for norm comparisons but not meaningful ULP analysis because their text representation has limited precision.
 
-#include "hip/hip_runtime.h"
 #pragma once
 
 #include <algorithm>

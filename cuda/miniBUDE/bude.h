@@ -1,26 +1,21 @@
-// Defines miniBUDE's fixed fp32 deck layout, precision-selected device data, typed constants, run parameters, and backend interface. Host conversions widen deck values before upload, while sampled energies are stored as doubles with their actual kernel precision recorded. Device-event and matching wall-clock samples are kept separately because these timings are not directly comparable with upstream host-clock miniBUDE results.
+// miniBUDE problem types and the run interface. Plain C++ (no vendor
+// headers) so host-only modules can include it. The deck layout, typed
+// constants, device structs and converters are the original bude.h code;
+// the run parameters, the Bude backend class and the sample struct are
+// replaced by Deck (deck.h), the functions below and the report.
 
 #pragma once
 
 #include <array>
-#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <string>
-#include <type_traits>
-#include <utility>
 #include <vector>
 
-#define DEFAULT_ITERS 8
-#define DEFAULT_ENERGY_ENTRIES 8
+#include "energy.h"
 
-#define DATA_DIR "../../data/miniBUDE/bm1"
-#define FILE_LIGAND "/ligand.in"
-#define FILE_PROTEIN "/protein.in"
-#define FILE_FORCEFIELD "/forcefield.in"
-#define FILE_POSES "/poses.in"
-#define FILE_REF_ENERGIES "/ref_energies.out"
+// ---- original bude.h definitions -------------------------------------------
 
 #define REPORT_TOLERANCE_PCT 0.025
 
@@ -77,26 +72,6 @@ template <typename T> struct alignas(16) FFParamsT {
 template <typename T> struct Vec3 { T x, y, z; };
 template <typename T> struct Vec4 { T x, y, z, w; };
 
-struct Params {
-  std::vector<Atom> protein;
-  std::vector<Atom> ligand;
-  std::vector<FFParams> forcefield;
-  std::array<std::vector<float>, 6> poses;
-
-  std::vector<float> refEnergies;
-  size_t maxPoses, iterations, warmupIterations, outRows;
-  std::string deckDir, output, deviceSelector;
-  bool csv;
-  bool list;
-
-  [[nodiscard]] size_t totalIterations() const { return iterations + warmupIterations; }
-
-  [[nodiscard]] size_t natpro() const { return protein.size(); }
-  [[nodiscard]] size_t natlig() const { return ligand.size(); }
-  [[nodiscard]] size_t ntypes() const { return forcefield.size(); }
-  [[nodiscard]] size_t nposes() const { return poses[0].size(); }
-};
-
 template <typename T> [[nodiscard]] std::vector<AtomT<T>> convertAtoms(const std::vector<Atom> &xs) {
   std::vector<AtomT<T>> out(xs.size());
   for (size_t i = 0; i < xs.size(); ++i)
@@ -115,36 +90,45 @@ template <typename T> [[nodiscard]] std::vector<T> convertPoses(const std::vecto
   return std::vector<T>(xs.begin(), xs.end());
 }
 
-using TimePoint = std::chrono::high_resolution_clock::time_point;
+// ---- run interface ------------------------------------------------------------
 
-[[nodiscard]] static inline double elapsedMillis(const TimePoint &start, const TimePoint &end) {
-  auto elapsedNs = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
-  return elapsedNs * 1e-6;
-}
+struct Deck;
 
-[[nodiscard]] static inline TimePoint now() { return std::chrono::high_resolution_clock::now(); }
+enum class Precision { Double, Float };
 
-struct Sample {
-  size_t ppwi, wgsize, precisionBits;
-  std::vector<double> energies;
+inline const char* precision_name(Precision p) { return p == Precision::Double ? "float64" : "float32"; }
+inline std::size_t precision_bits(Precision p) { return p == Precision::Double ? 64 : 32; }
 
-  std::vector<double> kernelMillis;
+// PPWI values compiled into the binary (the original DEFAULT_PPWI).
+constexpr std::array<std::size_t, 8> kPPWIs = {1, 2, 4, 8, 16, 32, 64, 128};
 
-  std::vector<double> wallMillis;
-
-  std::optional<std::pair<TimePoint, TimePoint>> contextTime;
-  Sample(size_t ppwi, size_t wgsize, size_t precisionBits, size_t nposes)
-      : ppwi(ppwi), wgsize(wgsize), precisionBits(precisionBits), energies(nposes), kernelMillis(), wallMillis(),
-        contextTime() {}
+// One timed (ppwi, wgsize) configuration.
+struct Sample
+{
+  std::size_t ppwi = 0, wgsize = 0;
+  std::vector<double> energies;       // one per pose, widened to double
+  std::vector<double> kernel_s;       // device-event seconds, timed iterations only
+  std::vector<double> wall_s;         // host seconds around the same launches
+  double context_s = 0.0;             // allocation and upload time
+  EnergyResult energy;                // board energy over the timed iterations
 };
 
-using Device = std::pair<size_t, std::string>;
+// Runs `warmup` untimed and `iterations` timed launches of one configuration.
+// The meter is started after the warm-up and stopped after the last timed
+// launch. Throws std::runtime_error on runtime failures.
+Sample run_config(Precision p, const Deck& deck, std::size_t ppwi, std::size_t wgsize, int device,
+                  std::size_t warmup, std::size_t iterations, EnergyMeter& meter);
 
-template <typename T, size_t PPWI> class Bude {
-public:
-  virtual ~Bude() = default;
-  [[nodiscard]] virtual std::string name() = 0;
-  [[nodiscard]] virtual std::vector<Device> enumerateDevices() = 0;
-  [[nodiscard]] virtual bool compatible(const Params &p, size_t wgsize, size_t device) const { return true; };
-  [[nodiscard]] virtual Sample fasten(const Params &p, size_t wgsize, size_t device) const = 0;
-};
+// One untimed fp64 launch of a configuration: the reference for float32 runs.
+std::vector<double> reference_pass(const Deck& deck, std::size_t ppwi, std::size_t wgsize, int device);
+
+// Empty when the compiled kernel matches the device, otherwise a note.
+std::string kernel_arch_note(int device);
+
+// Bytes of shared memory per block the device allows.
+std::size_t shared_mem_per_block(int device);
+
+// Build-time options compiled in.
+bool shared_forcefield();          // USE_SHARED
+const char* allocation_mode();     // device, managed or pagefault allocation
+bool restrict_pointers();          // !NO_RESTRICT

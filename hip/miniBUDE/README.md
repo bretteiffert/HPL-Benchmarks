@@ -1,29 +1,37 @@
-# miniBUDE - HIP
+# miniBUDE - Native HIP
+
+## Setup
+
+Install ROCm (HIP 5.x or newer, `hipcc`) and the AMD GPU driver, and set the vendor path.
+
+    export HIP_PATH=[path-to-rocm]
+
+The build links libkernelenergy.so from ../../dependencies, so build that library first. The deck is read from ../../data/miniBUDE/bm1 by default.
+
+    make                  # detects the GPU architecture with amdgpu-arch or rocminfo
+    make ARCH=gfx90a      # or name it, e.g. on a build node without a GPU
+
+This creates `./bude-hip`. `HIPCC` defaults to `$HIP_PATH/bin/hipcc` (HIP_PATH defaults to /opt/rocm). The original build options still work through `EXTRA_FLAGS`: `-DUSE_SHARED` (forcefield in shared memory), `-DNO_RESTRICT`, `-DMANAGED` or `-DPAGEFAULT` (allocation mode).
 
 ## Configuration
 
-Precision is selected at compile time in `main.cpp`:
+Precision is selected at run time with a flag:
 
-```cpp
-#define PRECISION_BITS 64
-```
+    --double   # fp64, the default
+    --float    # fp32; one untimed fp64 pass is run as the reference
 
-## Build
+Other options keep the upstream names: `--deck DIR`, `-i` timed iterations (default 8), `--warmup N` (default 2), `-n` poses (0 for all), `-p` PPWI list or `all`, `-w` work-group size list, `-d` device index or name substring, `-o` file for the first configuration's energies, `-r` energies shown in the report. One run sweeps every PPWI × work-group combination; combinations whose pose count is not a multiple of ppwi × wgsize are skipped with a note. Also `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
-The makefile uses `amd-smi` to detect the GPU architecture and requires `hipcc` from ROCm.
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
-```sh
-make
-```
+## AMD ROCm/HIP
 
-## Run one
+Run one
 
-```sh
-./bude-hip --deck ../../data/miniBUDE/bm1 -p 64 -w 64
-```
+    ./bude-hip --deck ../../data/miniBUDE/bm1 -w 64 -p 64
 
-## Run the sweep
+Run the sweep (every PPWI at work-group size 64)
 
-```sh
-source run_hip.sh
-```
+    bash run.sh
+
+Extra arguments are passed to the sweep run, for example `bash run.sh --float --csv > results.csv`.

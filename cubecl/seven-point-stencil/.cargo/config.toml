@@ -1,0 +1,10 @@
+# C/C++ compilers for dependencies with native code (e.g. `ring`).
+#
+# HPC environments often export CC=nvc (NVIDIA HPC SDK), which rejects the GCC
+# warning flags those build scripts pass. The `cc` crate checks these
+# target-specific variables before plain CC/CXX, so this overrides nvc for this
+# project only, without changing the shell's CC. Set the variables yourself to
+# use a different compiler.
+[env]
+CC_x86_64_unknown_linux_gnu = "gcc"
+CXX_x86_64_unknown_linux_gnu = "g++"
