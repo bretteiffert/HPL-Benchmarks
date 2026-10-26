@@ -1,31 +1,40 @@
 # BabelStream - Native CUDA
 
-## Prerequisites and build
+## Setup
 
-The build requires the CUDA toolkit (`nvcc`) and a C++ host compiler. The makefile detects the GPU and compiles for that architecture.
+Install the CUDA toolkit (`nvcc`, CUDA 11 or newer for C++17), a C++17 host compiler (`g++` by default), and the NVIDIA driver, and set the vendor path.
 
-```sh
-make
-```
+    export CUDA_PATH=[path-to-cuda]
 
-This creates `./babelstream_cuda`.
+The build links libkernelenergy.so from ../../dependencies, so build that library first.
 
-## Precision and configuration
+    make                  # detects the GPU architecture with nvidia-smi
+    make ARCH=90          # or name it, e.g. on a build node without a GPU
 
-Precision is selected at compile time in `main.cpp`:
+This creates `./babelstream_cuda`. The host compiler is pinned to `g++` (`make HOST_CXX=...` to change it), so an exported `CC=nvc` does not leak in.
 
-```cpp
-use float = false // 64 bit
-```
+## Configuration
 
-## Run one
+Precision is selected at run time with a flag:
 
-```sh
-./babelstream_cuda -s 33554432 -n 1000
-```
+    --double   # fp64, the default
+    --float    # fp32
+    --half     # fp16; values decay below the fp16 range after a few hundred iterations, see the correctness notes
 
-## Run the sweep
+Other options: `-s SIZE` elements per array (default 33,554,432), `-n NUM` iterations (default 1000, the first is warm-up), `--block-size N` (default 1024, a power of two), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes` (text report only). `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
-```sh
-bash run_cuda.sh
-```
+`FMAD` is a build-time switch (`make EXTRA_FLAGS=-DFMAD=0`). nvcc contracts `a*b+c` into an FMA by default, so it is normally a no-op.
+
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
+
+## NVIDIA CUDA
+
+Run one
+
+    ./babelstream_cuda -s 33554432 -n 1000
+
+Run the sweep
+
+    bash run.sh
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh --float --csv > results.csv`.

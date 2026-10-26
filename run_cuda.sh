@@ -15,46 +15,42 @@ EOF
 }
 
 run_stencil() {
-    source hudson_setup.sh   
     bash cuda/seven-point-stencil/run_cuda.sh >> output/stencil/cuda.txt;
     bash cubecl/seven-point-stencil/run_cuda.sh >> output/stencil/cubecl_cuda.txt;
-    bash kernelabstractions/seven-point-stencil/cuda/run_cuda.sh >> output/stencil/ka_cuda.txt;
-    bash Mojo/seven-point-stencil/run_cuda.sh >> output/stencil/Mojo_cuda.txt;
-    bash triton/seven-point-stencil/run_cuda.sh >> output/stencil/triton_cuda.txt;
+    #bash kernelabstractions/seven-point-stencil/run_cuda.sh >> output/stencil/ka_cuda.txt;
+    #bash Mojo/seven-point-stencil/run_cuda.sh >> output/stencil/Mojo_cuda.txt;
+    #bash triton/seven-point-stencil/run_cuda.sh >> output/stencil/triton_cuda.txt;
 
 }
 
 run_babelstream() {
-    source hudson_setup.sh
     bash cuda/babelstream/run_cuda.sh >> output/babelstream/cuda_cuda.txt;
     bash cubecl/babelstream/run_cuda.sh >> output/babelstream/cubecl_cuda.txt;
-    bash kernelabstractions/babelstream/cuda/run_cuda.sh >> output/babelstream/ka_cuda.txt;
-    bash Mojo/babelstream/run_cuda.sh >> output/babelstream/Mojo_cuda.txt;
-    bash triton/babelstream/run_cuda.sh >> output/babelstream/triton_cuda.txt;
+    #bash kernelabstractions/babelstream/run_cuda.sh >> output/babelstream/ka_cuda.txt;
+    #bash Mojo/babelstream/run_cuda.sh >> output/babelstream/Mojo_cuda.txt;
+    #bash triton/babelstream/run_cuda.sh >> output/babelstream/triton_cuda.txt;
 }
 
 run_hartreefock() {
-    source hudson_setup.sh
     bash cuda/hartree-fock/run_cuda.sh >> output/hartree-fock/cuda_cuda.txt;
     bash cubecl/hartree-fock/run_cuda.sh >> output/hartree-fock/cubecl_cuda.txt;
-    bash kernelabstractions/hartree-fock/cuda/run_cuda.sh >> output/hartree-fock/ka_cuda.txt;
-    bash Mojo/hartree-fock/run_cuda.sh >> output/hartree-fock/Mojo_cuda.txt;
-    bash triton/hartree-fock/run_cuda.sh >> output/hartree-fock/triton_cuda.txt;
+    #bash kernelabstractions/hartree-fock/run_cuda.sh >> output/hartree-fock/ka_cuda.txt;
+    #bash Mojo/hartree-fock/run_cuda.sh >> output/hartree-fock/Mojo_cuda.txt;
+    #bash triton/hartree-fock/run_cuda.sh >> output/hartree-fock/triton_cuda.txt;
 }
 
 run_minibude() {
-    source hudson_setup.sh
     bash cuda/miniBUDE/run_cuda.sh >> output/miniBUDE/cuda_cuda.txt;
     bash cubecl/miniBUDE/run_cuda.sh >> output/miniBUDE/cubecl_cuda.txt;
-    bash kernelabstractions/miniBUDE/cuda/run_cuda.sh >> output/miniBUDE/ka_cuda.txt;
-    bash Mojo/miniBUDE/run_cuda.sh >> output/miniBUDE/Mojo_cuda.txt;
-    bash triton/miniBUDE/run_cuda.sh >> output/miniBUDE/triton_cuda.txt;
+    #bash kernelabstractions/miniBUDE/run_cuda.sh >> output/miniBUDE/ka_cuda.txt;
+    #bash Mojo/miniBUDE/run_cuda.sh >> output/miniBUDE/Mojo_cuda.txt;
+    #bash triton/miniBUDE/run_cuda.sh >> output/miniBUDE/triton_cuda.txt;
 }
 
 run_all() {
     run_stencil;
     run_babelstream;
-    run_hartree_fock;
+    run_hartreefock;
     run_minibude
 }
 
@@ -67,7 +63,7 @@ case "$1" in
     --stencil)
         run_stencil
         ;;
-    --babelStream)
+    --babelstream)
         run_babelstream
         ;;
     --hartree-fock)

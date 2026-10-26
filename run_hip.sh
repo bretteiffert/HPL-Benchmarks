@@ -16,35 +16,35 @@ EOF
 
 run_stencil() { 
     bash hip/seven-point-stencil/run_hip.sh >> output/stencil/hip_block_sweep.txt;
-    bash cubecl/seven-point-stencil/run_hip.sh >> output/stencil/cubecl_hip_block_sweep.txt;
-    bash kernelabstractions/seven-point-stencil/hip/run_hip.sh >> output/stencil/ka_hip_block_sweep.txt
-    bash Mojo/seven-point-stencil/run_hip.sh >> output/stencil/Mojo_hip_block_sweep.txt;
-    bash triton/seven-point-stencil/run_hip.sh >> output/stencil/triton_hip_block_sweep.txt;
+    #bash cubecl/seven-point-stencil/run_hip.sh >> output/stencil/cubecl_hip_block_sweep.txt;
+    #bash kernelabstractions/seven-point-stencil/run_hip.sh >> output/stencil/ka_hip_block_sweep.txt
+    #ash Mojo/seven-point-stencil/run_hip.sh >> output/stencil/Mojo_hip_block_sweep.txt;
+    #bash triton/seven-point-stencil/run_hip.sh >> output/stencil/triton_hip_block_sweep.txt;
 
 }
 
 run_babelstream() {
     bash hip/babelstream/run_hip.sh >> output/babelstream/hip_hip.txt;
-    bash cubecl/babelstream/run_hip.sh >> output/babelstream/cubecl_hip.txt;
-    bash kernelabstractions/babelstream/hip/run_hip.sh >> output/babelstream/ka_hip.txt
-    bash Mojo/babelstream/run_hip.sh >> output/babelstream/Mojo_hip.txt;
-    bash triton/babelstream/run_hip.sh >> output/babelstream/triton_hip.txt;
+    #bash cubecl/babelstream/run_hip.sh >> output/babelstream/cubecl_hip.txt;
+    #bash kernelabstractions/babelstream/run_hip.sh >> output/babelstream/ka_hip.txt
+    #bash Mojo/babelstream/run_hip.sh >> output/babelstream/Mojo_hip.txt;
+    #bash triton/babelstream/run_hip.sh >> output/babelstream/triton_hip.txt;
 }
 
 run_hartreefock() {
     bash hip/hartree-fock/run_hip.sh >> output/hartree-fock/hip_hip.txt;
     bash cubecl/hartree-fock/run_hip.sh >> output/hartree-fock/cubecl_hip.txt;
-    bash kernelabstractions/hartree-fock/hip/run_hip.sh >> output/hartree-fock/ka_hip.txt;
-    bash Mojo/hartree-fock/run_hip.sh >> output/hartree-fock/Mojo_hip.txt;
-    bash triton/hartree-fock/run_hip.sh >> output/hartree-fock/triton_hip.txt;
+    #bash kernelabstractions/hartree-fock/run_hip.sh >> output/hartree-fock/ka_hip.txt;
+    #bash Mojo/hartree-fock/run_hip.sh >> output/hartree-fock/Mojo_hip.txt;
+    #bash triton/hartree-fock/run_hip.sh >> output/hartree-fock/triton_hip.txt;
 }
 
 run_minibude() {
     bash hip/miniBUDE/run_hip.sh >> output/miniBUDE/hip_hip.txt;
-    bash cubecl/miniBUDE/run_hip.sh >> output/miniBUDE/cubecl_hip.txt;
-    bash kernelabstractions/miniBUDE/hip/run_hip.sh >> output/miniBUDE/ka_hip.txt;
-    bash Mojo/miniBUDE/run_hip.sh >> output/miniBUDE/Mojo_hip.txt;
-    bash triton/miniBUDE/run_hip.sh >> output/miniBUDE/triton_hip.txt;
+    #bash cubecl/miniBUDE/run_hip.sh >> output/miniBUDE/cubecl_hip.txt;
+    #bash kernelabstractions/miniBUDE/run_hip.sh >> output/miniBUDE/ka_hip.txt;
+    #bash Mojo/miniBUDE/run_hip.sh >> output/miniBUDE/Mojo_hip.txt;
+    #bash triton/miniBUDE/run_hip.sh >> output/miniBUDE/triton_hip.txt;
 }
 
 run_all() {
@@ -63,7 +63,7 @@ case "$1" in
     --stencil)
         run_stencil
         ;;
-    --babelStream)
+    --babelstream)
         run_babelstream
         ;;
     --hartree-fock)

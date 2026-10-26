@@ -9,5 +9,5 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [dependencies]
-mojo = "==1.0.0"
-max = "==26.5.0"
+mojo = "==1.2.0"
+max = "==26.7.0"

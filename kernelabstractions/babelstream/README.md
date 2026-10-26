@@ -2,82 +2,52 @@
 
 ## Setup
 
-```bash
-julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+Install Julia 1.13 (the Manifests were resolved with 1.13.1) and the vendor driver for the selected backend. CUDA.jl downloads its CUDA runtime as an artifact; AMDGPU.jl uses the system ROCm and finds it through `ROCM_PATH`.
 
-or
-```bash
-julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+    export ROCM_PATH=[path-to-rocm]
 
-## Run
+Each backend has its own environment, so one checkout serves both vendors:
 
-Select the backend per invocation:
+    env/cuda   KernelAbstractions + CUDA.jl
+    env/hip    KernelAbstractions + AMDGPU.jl
 
-```bash
-julia --project=env/cuda -O3 --check-bounds=no babelstream.jl \
-  --backend cuda -s 33554432 -n 1000 -p 64
+The environment you activate selects the backend. Install it once:
 
-```
+    julia --project=env/cuda -e 'using Pkg; Pkg.instantiate()'
+    julia --project=env/hip  -e 'using Pkg; Pkg.instantiate()'
 
-or
-```bash
-julia --project=env/hip -O3 --check-bounds=no babelstream.jl \
-  --backend hip -s 33554432 -n 1000 -p 64
-```
+Energy is measured through ../../dependencies/energy.jl, which loads libkernelenergy.so from the same folder, so build that library first. Runs with `--no-energy` need neither.
 
-Supported options:
+## Configuration
 
-```text
---backend cuda|hip
--s SIZE
--n NUM
--p 16|32|64
---csv
--h
-```
+Precision is selected at run time with a flag:
 
-Defaults are `cuda`, `33554432` elements, `1000` iterations, and Float64.
-Precision is selected at runtime.
+    --double   # fp64, the default
+    --float    # fp32
+    --half     # fp16
 
-## Sweep scripts
+Other options: `-s` array size (33554432), `-n` iterations (1000; the first is a warm-up and is excluded from statistics, CSV and energy), `--block-size` (1024; Dot always uses 1024), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
-```bash
-bash run_cuda.sh
-```
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
-or
-```bash
-bash run_hip.sh
-```
+## NVIDIA CUDA
 
-Override precision or iteration count when needed:
+Run one
 
-```bash
-PRECISION=64 NUM_TIMES=100 bash run_cuda.sh
-```
+    julia --project=env/cuda -O3 --check-bounds=no main.jl -s 33554432 -n 1000
 
-or
-```bash
-PRECISION=64 NUM_TIMES=100 bash run_hip.sh
-```
+Run the sweep
 
-## CSV output
+    bash run.sh cuda
 
-Add `--csv` to write performance rows to stdout with these columns:
+## AMD ROCm/HIP
 
-```text
-backend,GPU,precision,vec_size,routine,BW_GBs
-```
+Run one
 
-Correctness diagnostics are written to stderr:
+    julia --project=env/hip -O3 --check-bounds=no main.jl -s 33554432 -n 1000
 
-```bash
-julia --project=env/cuda babelstream.jl --backend cuda -s 1048576 -n 10 --csv
-```
+Run the sweep
 
-or
-```bash
-julia --project=env/hip babelstream.jl --backend hip -s 1048576 -n 10 --csv
-```
+    bash run.sh hip
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.
