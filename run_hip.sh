@@ -25,17 +25,10 @@ run_stencil() {
 
 run_babelstream() {
     bash hip/babelstream/run_hip.sh >> output/babelstream/hip_hip.txt;
-<<<<<<< HEAD
     #bash cubecl/babelstream/run_hip.sh >> output/babelstream/cubecl_hip.txt;
     #bash kernelabstractions/babelstream/run_hip.sh >> output/babelstream/ka_hip.txt
     #bash Mojo/babelstream/run_hip.sh >> output/babelstream/Mojo_hip.txt;
     #bash triton/babelstream/run_hip.sh >> output/babelstream/triton_hip.txt;
-=======
-    bash cubecl/babelstream/run_hip.sh >> output/babelstream/cubecl_hip.txt;
-    bash kernelabstractions/babelstream/hip/run_hip.sh >> output/babelstream/ka_hip.txt
-    bash Mojo/babelstream/run_hip.sh >> output/babelstream/Mojo_hip.txt;
-    bash triton/babelstream/run_hip.sh >> output/babelstream/triton_hip.txt;
->>>>>>> main
 }
 
 run_hartreefock() {
@@ -70,11 +63,7 @@ case "$1" in
     --stencil)
         run_stencil
         ;;
-<<<<<<< HEAD
     --babelstream)
-=======
-    --babelStream)
->>>>>>> main
         run_babelstream
         ;;
     --hartree-fock)
