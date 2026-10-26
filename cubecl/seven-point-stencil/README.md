@@ -28,7 +28,7 @@ Other options:
 ```bash
 -s, --size L             # L x L x L grid (default 1024)
 --grid X,Y,Z             # non-cubic grid instead
---block-size X[,Y[,Z]]   # cube shape for the Laplacian (default 1024,1,1)
+--block-size 64,4,1       # pinned 256-unit cube shape for the Laplacian
 -n, --numtimes NUM       # timed iterations (default 100), after one untimed warm-up run
 --device INDEX           # device to run on (default 0); --list shows them
 --csv                    # CSV to stdout: one summary row
@@ -44,10 +44,10 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 Run one
 
 ```bash
-cargo run --release --no-default-features --features cuda -- -s 1024 --block-size 1024,1,1
+cargo run --release --no-default-features --features cuda -- -s 1024 --block-size 64,4,1
 ```
 
-Run the block-size sweep
+Run the pinned configuration
 
 ```bash
 bash run.sh cuda
@@ -58,13 +58,13 @@ bash run.sh cuda
 Run one
 
 ```bash
-cargo run --release --no-default-features --features hip -- -s 1024 --block-size 512,1,1
+cargo run --release --no-default-features --features hip -- -s 1024 --block-size 64,4,1
 ```
 
-Run the sweep
+Run the pinned configuration
 
 ```bash
 bash run.sh hip
 ```
 
-Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.
+Extra arguments are passed to the run, for example `bash run.sh cuda --float --csv > results.csv`.

@@ -2,7 +2,7 @@
 
 DEFAULT_SIZE = 1024
 DEFAULT_NUM_TIMES = 100
-DEFAULT_BLOCK = (1024, 1, 1)
+DEFAULT_BLOCK = (64, 4, 1)
 
 
 class UsageError(Exception):
@@ -94,6 +94,8 @@ def parse(argv):
 
     if opts.csv and opts.csv_raw and not (opts.help or opts.list):
         raise UsageError("--csv and --csv-raw cannot be used together")
+    if opts.block != DEFAULT_BLOCK:
+        raise UsageError("the pinned configuration requires --block-size 64,4,1")
     return opts
 
 
@@ -106,9 +108,8 @@ Usage: %s [OPTIONS]
 Options:
   -s, --size L           cubic grid L x L x L, L >= 3 (default %d)
       --grid X,Y,Z       grid with different sides (each >= 3)
-      --block-size X[,Y[,Z]]
-                         points per program along x, y, z; each a power of two
-                         (default %d,%d,%d; missing sides are 1)
+      --block-size X,Y,Z  pinned points per program; must be 64,4,1
+                          (default %d,%d,%d)
   -n, --numtimes NUM     timed iterations after 1 untimed run (default %d)
       --double           float64 (default)
       --float            float32

@@ -26,7 +26,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16, only up to 105 points per side
 
-Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `-n` timed iterations after one untimed run (100), `--block-size X[,Y[,Z]]` (1024,1,1), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `-n` timed iterations after one untimed run (100), `--block-size 64,4,1` (the pinned 256-work-item shape), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 Bandwidth counts the theoretical traffic: every point except the 8 corners and 12 edges read once, every interior point written once. Correctness checks ∇²u = 3 at the interior points of the untimed run, on the device.
 
@@ -38,7 +38,7 @@ Run one
 
     julia --project=env/cuda -O3 --check-bounds=no main.jl -s 1024 -n 100
 
-Run the sweep
+Run the pinned configuration
 
     bash run.sh cuda
 
@@ -48,8 +48,8 @@ Run one
 
     julia --project=env/hip -O3 --check-bounds=no main.jl -s 1024 -n 100
 
-Run the sweep
+Run the pinned configuration
 
     bash run.sh hip
 
-Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.
+Extra arguments are passed to the run, for example `bash run.sh cuda --float --csv > results.csv`.

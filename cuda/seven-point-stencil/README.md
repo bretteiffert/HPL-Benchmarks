@@ -21,7 +21,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16; up to 105 points per side, where the centre coefficient fits in fp16
 
-Other options: `-s L` for an L × L × L grid (default 1024) or `--grid X,Y,Z`, `--block-size X[,Y[,Z]]` (default 1024,1,1), `-n NUM` timed runs after one untimed run (default 100), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+Other options: `-s L` for an L × L × L grid (default 1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-thread shape), `-n NUM` timed runs after one untimed run (default 100), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
 Bandwidth uses the theoretical traffic: every point is read except the 8 corners and 12 edges, and every interior point is written. The correctness check compares the interior with the exact Laplacian 3.
 
@@ -31,10 +31,10 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    ./laplacian_kernel -s 1024 --block-size 1024,1,1
+    ./laplacian_kernel -s 1024 --block-size 64,4,1
 
-Run the sweep
+Build and run the pinned configuration
 
     bash run.sh
 
-Extra arguments are passed to every run of the sweep, for example `bash run.sh --float --csv > results.csv`.
+Extra arguments are passed to the run, for example `bash run.sh --float --csv > results.csv`.

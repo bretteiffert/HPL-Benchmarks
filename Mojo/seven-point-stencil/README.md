@@ -20,7 +20,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16, only for small grids (up to 105 points per side for a cube)
 
-Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size X[,Y[,Z]]` (1024,1,1), `-n` timed iterations (100, after 1 untimed run), `--device INDEX`, `--list`, `--mibibytes`, `--csv`, `--csv-raw`, `--no-energy`. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-thread shape), `-n` timed iterations (100, after 1 untimed run), `--device INDEX`, `--list`, `--mibibytes`, `--csv`, `--csv-raw`, `--no-energy`. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -28,9 +28,9 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    pixi run mojo run -D BACKEND=cuda main.mojo -s 1024 --block-size 1024,1,1
+    pixi run mojo run -D BACKEND=cuda main.mojo -s 1024 --block-size 64,4,1
 
-Run the sweep
+Run the pinned configuration
 
     bash run.sh cuda
 
@@ -38,10 +38,10 @@ Run the sweep
 
 Run one
 
-    pixi run mojo run -D BACKEND=hip main.mojo -s 1024 --block-size 512,1,1
+    pixi run mojo run -D BACKEND=hip main.mojo -s 1024 --block-size 64,4,1
 
-Run the sweep
+Run the pinned configuration
 
     bash run.sh hip
 
-Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.
+Extra arguments are passed to the run, for example `bash run.sh cuda --float --csv > results.csv`.

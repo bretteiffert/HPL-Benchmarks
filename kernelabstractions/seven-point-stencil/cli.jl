@@ -12,7 +12,7 @@ Base.@kwdef mutable struct Args
     grid::NTuple{3,Int} = (1024, 1024, 1024)
     num_times::Int = 100
     precision::Symbol = :double        # :double | :float | :half
-    block::NTuple{3,Int} = (1024, 1, 1)
+    block::NTuple{3,Int} = (64, 4, 1)
     device::Int = 0
     csv::Bool = false
     csv_raw::Bool = false
@@ -86,6 +86,7 @@ function parse_args(argv::Vector{String})
         i += 1
     end
     a.csv && a.csv_raw && throw(CliError("--csv and --csv-raw are mutually exclusive"))
+    a.block == (64, 4, 1) || throw(CliError("the pinned configuration requires --block-size 64,4,1"))
     return a
 end
 
@@ -103,7 +104,7 @@ function print_help(io::IO = stdout)
           --double           float64 (default)
           --float            float32
           --half             float16 (only while 2·Σ(n-1)² <= 65,504, i.e. L <= 105)
-          --block-size X[,Y[,Z]]  workgroup shape (default 1024,1,1)
+          --block-size X,Y,Z      pinned workgroup shape; must be 64,4,1
           --device INDEX     device index; the energy profiler uses the same index (default 0)
           --list             list devices (index: name) and exit
           --csv              summary CSV on stdout (report on stderr)

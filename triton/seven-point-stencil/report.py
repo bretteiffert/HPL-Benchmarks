@@ -19,6 +19,7 @@ class Report:
         self.nx = self.ny = self.nz = 0
         self.bx = self.by = self.bz = 0
         self.grid = (0, 0, 0)        # programs per axis
+        self.num_warps = 0
         self.fetch_bytes = 0
         self.write_bytes = 0
         self.num_times = 0           # timed iterations, after one untimed run
@@ -81,8 +82,9 @@ def text_header(r):
         _key("Grid", "%s × %s × %s (%s points, %.1f MB per array)"
              % (count(r.nx), count(r.ny), count(r.nz), count(points),
                 points * r.itemsize * 1.0e-6)),
-        _key("Block size", "%s × %s × %s (points per program; num_warps chosen by Triton)"
-             % (count(r.bx), count(r.by), count(r.bz))),
+        _key("Block size", "%s × %s × %s (256 points per program, %s %s)"
+             % (count(r.bx), count(r.by), count(r.bz), count(r.num_warps),
+                "warps" if r.backend == "CUDA" else "waves")),
         _key("Programs", "%s × %s × %s" % tuple(count(g) for g in r.grid)),
         _key("Traffic", "%.1f MB read + %.1f MB written (theoretical)"
              % (r.fetch_bytes * 1.0e-6, r.write_bytes * 1.0e-6)),

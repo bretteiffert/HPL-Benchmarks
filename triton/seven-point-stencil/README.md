@@ -24,7 +24,7 @@ Precision is selected at run time with a flag:
 --half     # fp16, grids of at most 105 per side
 ```
 
-Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size X[,Y[,Z]]` points per program (1024,1,1; powers of two), `-n` timed iterations (100, after 1 untimed run), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-point program), `-n` timed iterations (100, after 1 untimed run), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. Triton uses 8 warps on CUDA and 4 waves on HIP. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -33,10 +33,10 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 Run one
 
 ```sh
-pixi run -e cuda python main.py -s 1024 --block-size 1024,1,1
+pixi run -e cuda python main.py -s 1024 --block-size 64,4,1
 ```
 
-Run the sweep
+Run the pinned configuration
 
 ```sh
 bash run.sh cuda
@@ -47,13 +47,13 @@ bash run.sh cuda
 Run one
 
 ```sh
-pixi run -e hip python main.py -s 1024 --block-size 512,1,1
+pixi run -e hip python main.py -s 1024 --block-size 64,4,1
 ```
 
-Run the sweep
+Run the pinned configuration
 
 ```sh
 bash run.sh hip
 ```
 
-Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.
+Extra arguments are passed to the run, for example `bash run.sh cuda --float --csv > results.csv`.

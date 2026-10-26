@@ -49,10 +49,11 @@ def coefficients(nx, ny, nz, npdt):
 
 
 class Stencil:
-    def __init__(self, nx, ny, nz, block, precision, device_index):
+    def __init__(self, nx, ny, nz, block, precision, device_index, num_warps):
         npdt, tdt = _PRECISIONS[precision]
         self.nx, self.ny, self.nz = nx, ny, nz
         self.bx, self.by, self.bz = block
+        self.num_warps = num_warps
         torch.cuda.set_device(device_index)
         self.device = torch.device("cuda", device_index)
         n = nx * ny * nz
@@ -72,12 +73,13 @@ class Stencil:
     def initialise(self):
         grid = (triton.cdiv(self.nx, TEST_FUNCTION_TB), self.ny, self.nz)
         test_function_kernel[grid](self.d_u, self.d_h, self.nx, self.ny, self.nz,
-                                   TB=TEST_FUNCTION_TB)
+                                   TB=TEST_FUNCTION_TB, num_warps=self.num_warps)
 
     def launch(self):
         grid = launch_grid(self.nx, self.ny, self.nz, self.bx, self.by, self.bz)
         laplacian_kernel[grid](self.d_f, self.d_u, self.d_p, self.nx, self.ny, self.nz,
-                               BLK_X=self.bx, BLK_Y=self.by, BLK_Z=self.bz)
+                               BLK_X=self.bx, BLK_Y=self.by, BLK_Z=self.bz,
+                               num_warps=self.num_warps)
 
     def untimed_run(self):
         """Initialise u, then one untimed Laplacian (also compiles the kernel)."""

@@ -108,6 +108,8 @@ Options parse_cli(int argc, char* argv[])
     throw CliError("--grid needs all three sizes, X,Y,Z");
   if (csv && csv_raw)
     throw CliError("--csv and --csv-raw cannot be used together");
+  if (o.block.x != 64 || o.block.y != 4 || o.block.z != 1)
+    throw CliError("the pinned configuration requires --block-size 64,4,1");
   if (csv) o.output = OutputMode::Csv;
   if (csv_raw) o.output = OutputMode::CsvRaw;
   return o;
@@ -124,9 +126,8 @@ std::string help_text(const char* program)
     << "Options:\n"
     << "  -s L                   cubic grid of L x L x L points (default 1024)\n"
     << "      --grid X,Y,Z       grid of X x Y x Z points\n"
-    << "      --block-size X[,Y[,Z]]\n"
-    << "                         threads per block in each dimension; missing\n"
-    << "                         dimensions are 1 (default 1024,1,1)\n"
+    << "      --block-size X,Y,Z pinned threads per block; must be 64,4,1\n"
+    << "                         (default 64,4,1)\n"
     << "  -n NUM                 timed runs after one untimed run (default 100)\n"
     << "      --double           float64 (default)\n"
     << "      --float            float32\n"

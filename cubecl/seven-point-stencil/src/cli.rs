@@ -10,7 +10,7 @@ pub enum Precision {
 }
 
 pub const DEFAULT_SIZE: u32 = 1024;
-pub const DEFAULT_BLOCK: (u32, u32, u32) = (1024, 1, 1);
+pub const DEFAULT_BLOCK: (u32, u32, u32) = (64, 4, 1);
 pub const DEFAULT_NUM_TIMES: u32 = 100;
 
 pub struct Args {
@@ -50,12 +50,11 @@ fn print_help(prog: &str) {
     println!("      --device     INDEX   Select device at INDEX (default 0)");
     println!("  -s  --size       L       Use an L x L x L grid (default {}), L >= 3", DEFAULT_SIZE);
     println!("      --grid       X,Y,Z   Use an X x Y x Z grid instead, each >= 3");
-    println!("      --block-size X[,Y[,Z]]");
+    println!("      --block-size X,Y,Z");
     println!(
-        "                           Units per cube for the Laplacian (default {},{},{});",
+        "                           Pinned units per cube; must be {},{},{}",
         DEFAULT_BLOCK.0, DEFAULT_BLOCK.1, DEFAULT_BLOCK.2
     );
-    println!("                           missing dimensions are 1");
     println!("  -n  --numtimes   NUM     Timed iterations, NUM >= 1 (default {});", DEFAULT_NUM_TIMES);
     println!("                           one untimed warm-up run comes first");
     println!("      --half               Use float16");
@@ -164,6 +163,9 @@ pub fn parse_arguments() -> Args {
     let (bx, by, bz) = args.block;
     if bx == 0 || by == 0 || bz == 0 {
         fail("block dimensions must be greater than 0");
+    }
+    if args.block != DEFAULT_BLOCK {
+        fail("the pinned configuration requires --block-size 64,4,1");
     }
 
     args.output = match (csv, csv_raw) {

@@ -12,7 +12,6 @@ INT32_MAX = 2 ** 31 - 1
 UINT32_MAX = 2 ** 32 - 1
 GRID_YZ_MAX = 65535        # CUDA's limit on grid y and z (Triton passes the grid through)
 FP16_MAX = 65504.0
-TRITON_NUM_WARPS = 4       # Triton's default launch (num_warps=4) on NVIDIA and AMD
 
 
 def fail(what, hint="--help"):
@@ -24,7 +23,7 @@ def _cdiv(a, b):
     return (a + b - 1) // b
 
 
-def validate(opts, be, props, max_numel, test_tb):
+def validate(opts, be, props, max_numel, test_tb, num_warps):
     nx, ny, nz = opts.grid
     bx, by, bz = opts.block
     c = report.count
@@ -56,10 +55,10 @@ def validate(opts, be, props, max_numel, test_tb):
     if be == backend.HIP:
         warp = int(getattr(props, "warp_size", 64) or 64)
         gx = max(_cdiv(nx, bx), _cdiv(nx, test_tb))
-        if gx * TRITON_NUM_WARPS * warp > UINT32_MAX:
+        if gx * num_warps * warp > UINT32_MAX:
             fail("%s programs along x x %d threads exceeds HIP's limit of %s work-items; "
                  "use a larger --block-size along x"
-                 % (c(gx), TRITON_NUM_WARPS * warp, c(UINT32_MAX)))
+                  % (c(gx), num_warps * warp, c(UINT32_MAX)))
 
 
 def main(argv):
@@ -98,7 +97,9 @@ def main(argv):
 
     info = backend.describe(torch, be, opts.device)
     props = torch.cuda.get_device_properties(opts.device)
-    validate(opts, be, props, tl.TRITON_MAX_TENSOR_NUMEL, stencil.TEST_FUNCTION_TB)
+    num_warps = 8 if be == backend.CUDA else 4
+    validate(opts, be, props, tl.TRITON_MAX_TENSOR_NUMEL,
+             stencil.TEST_FUNCTION_TB, num_warps)
 
     nx, ny, nz = opts.grid
     bx, by, bz = opts.block
@@ -111,6 +112,7 @@ def main(argv):
     r.nx, r.ny, r.nz = nx, ny, nz
     r.bx, r.by, r.bz = bx, by, bz
     r.grid = stencil.launch_grid(nx, ny, nz, bx, by, bz)
+    r.num_warps = num_warps
     r.fetch_bytes, r.write_bytes = stencil.traffic_bytes(nx, ny, nz, r.itemsize)
     r.num_times = opts.num_times
     r.energy_enabled = opts.energy
@@ -122,7 +124,8 @@ def main(argv):
     info_out.flush()
 
     try:
-        st = stencil.Stencil(nx, ny, nz, opts.block, opts.precision, opts.device)
+        st = stencil.Stencil(nx, ny, nz, opts.block, opts.precision,
+                             opts.device, num_warps)
     except torch.cuda.OutOfMemoryError:
         fail("not enough device memory for two arrays of %.1f MB"
              % (nx * ny * nz * r.itemsize * 1.0e-6))

@@ -28,8 +28,8 @@ struct Args(Copyable):
         self.nx = 1024
         self.ny = 1024
         self.nz = 1024
-        self.block_x = 1024
-        self.block_y = 1
+        self.block_x = 64
+        self.block_y = 4
         self.block_z = 1
         self.num_times = 100
         self.device_index = 0
@@ -56,10 +56,8 @@ Options:
   -s, --size L             Cubic grid L x L x L, L >= 3 (default: 1024)
       --grid X,Y,Z         Grid with X, Y, Z points per side, each >= 3
                            (overrides -s)
-      --block-size X[,Y[,Z]]
-                           Threads per block in x, y, z; missing values are 1;
-                           the product is at most the device limit
-                           (default: 1024,1,1)
+      --block-size X,Y,Z   Pinned threads per block; must be 64,4,1
+                           (default: 64,4,1)
   -n, --numtimes NUM       Timed launches after 1 untimed run, NUM >= 1
                            (default: 100)
       --double             float64 (default)
@@ -180,6 +178,8 @@ def parse_arguments() raises -> Args:
         raise Error("each grid side must be >= 3 (the stencil needs interior points)")
     if args.block_x < 1 or args.block_y < 1 or args.block_z < 1:
         raise Error("block sizes must be >= 1")
+    if args.block_x != 64 or args.block_y != 4 or args.block_z != 1:
+        raise Error("the pinned configuration requires --block-size 64,4,1")
     if args.csv and args.csv_raw:
         raise Error("--csv and --csv-raw are mutually exclusive")
     return args^
