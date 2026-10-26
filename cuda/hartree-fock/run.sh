@@ -40,9 +40,9 @@ for size in "${SIZE_CONFIGS[@]}"; do
   input="$INPUT_DIR/$size"
   echo "hartree-fock (CUDA): $size -n 10 $*" >&2
   if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
-    "$binary" "$input" -n 10 "$@" | tail -n +2
+    "$binary" "$input" -n 10 --block-size 256 "$@" | tail -n +2
   else
-    "$binary" "$input" -n 10 "$@"
+    "$binary" "$input" -n 10 --block-size 256 "$@"
   fi
   first=0
 done

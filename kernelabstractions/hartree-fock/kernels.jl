@@ -47,9 +47,11 @@ end
     RCUT = hf_rcut(T)
     SQRTPI2_DEV = hf_sqrtpi2(T)
 
+    # Match the native zero-based launch: global lane zero is inactive and
+    # lanes 1:nnnn each own one quartet.
     idx = @index(Global, Linear)
-    if 1 <= idx <= nnnn
-        ijkl = UInt64(idx)
+    ijkl = UInt64(idx - 1)
+    if UInt64(1) <= ijkl <= UInt64(nnnn)
         nat = UInt64(natoms)
         U1 = UInt64(1)
         U2 = UInt64(2)

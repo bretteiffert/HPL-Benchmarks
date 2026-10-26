@@ -41,7 +41,7 @@ void validate(const Options& o, const DeviceInfo& dev, const Deck& deck)
   if (grid > max_grid)
     throw CliError("grid of " + std::to_string(grid) + " blocks for " + std::to_string(deck.natoms) +
                    " atoms exceeds the device maximum of " + std::to_string(max_grid) +
-                   "; use a larger --block-size");
+                    "; the pinned block size is 256, so use a smaller input");
 }
 
 int run(const Options& o)

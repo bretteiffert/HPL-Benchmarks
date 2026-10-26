@@ -37,7 +37,7 @@ csv_header_done=0
 for size in "${SIZE_CONFIGS[@]}"; do
   out="$(cargo run --quiet --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
     --no-default-features --features "$backend" -- \
-    "$INPUT_DIR/$size" -n 10 "$@")"
+    "$INPUT_DIR/$size" -n 10 --block-size 256 "$@")"
   # In CSV modes, keep a single header row across inputs.
   if [[ " $* " == *" --csv "* || " $* " == *" --csv-raw "* ]]; then
     if (( csv_header_done )); then

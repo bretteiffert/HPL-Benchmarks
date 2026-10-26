@@ -55,7 +55,10 @@ Options parse_cli(int argc, char* argv[])
     else if (arg == "--max-check-atoms")       { o.max_check_atoms = int_value(i, argc, argv, "--max-check-atoms value", 0); }
     else if (arg == "--double")                { o.precision = Precision::Double; }
     else if (arg == "--float")                 { o.precision = Precision::Float; }
-    else if (arg == "--legacy-sqrt")           { o.sqrt_mode = SqrtMode::Legacy; }
+    else if (arg == "--legacy-sqrt")
+    {
+      throw CliError("the pinned configuration requires native square roots; --legacy-sqrt is not supported");
+    }
     else if (arg == "--check")                 { o.check = true; o.force_check = true; }
     else if (arg == "--no-check")              { o.check = false; o.force_check = false; }
     else if (arg == "--csv")                   { csv = true; }
@@ -88,6 +91,8 @@ Options parse_cli(int argc, char* argv[])
 
   if (csv && csv_raw)
     throw CliError("--csv and --csv-raw cannot be used together");
+  if (o.block_size != 256)
+    throw CliError("the pinned configuration requires --block-size 256");
   if (csv) o.output = OutputMode::Csv;
   if (csv_raw) o.output = OutputMode::CsvRaw;
 
@@ -109,9 +114,7 @@ std::string help_text(const char* program)
     << "  -n, --iters NUM        timed Fock builds after one untimed build (default 10)\n"
     << "      --double           float64 (default)\n"
     << "      --float            float32\n"
-    << "      --legacy-sqrt      Boys-function square roots in float32 (sqrtf) whatever\n"
-    << "                         the precision, as the old mixed-precision build did\n"
-    << "      --block-size N     threads per block, up to the device limit (default 256)\n"
+    << "      --block-size N     pinned threads per block; N must be 256 (default 256)\n"
     << "      --device INDEX     device to run on; the energy profiler uses the same\n"
     << "                         index (default 0)\n"
     << "      --list             list devices (index: name) and exit\n"
@@ -124,7 +127,8 @@ std::string help_text(const char* program)
     << "      --no-energy        skip board-power measurement\n"
     << "  -h, --help             show this help and exit\n"
     << "\n"
-    << "The last precision flag wins. Options take their value as a separate\n"
+    << "The pinned configuration uses native-precision square roots. The last\n"
+    << "precision flag wins. Options take their value as a separate\n"
     << "argument (-n 10, not --iters=10). Timed builds add into the same Fock\n"
     << "matrix; the checksum and the check use the untimed first build.\n"
     << "\n"

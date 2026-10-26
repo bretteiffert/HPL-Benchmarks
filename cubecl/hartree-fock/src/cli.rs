@@ -64,10 +64,9 @@ fn print_help(prog: &str) {
     println!("      --device     INDEX   Select device at INDEX (default 0)");
     println!("  -n  --numtimes   NUM     Timed iterations, NUM >= 1 (default {});", DEFAULT_NUM_TIMES);
     println!("                           one untimed run comes first");
-    println!("      --block-size SIZE    Units per cube (default {})", DEFAULT_BLOCK_SIZE);
+    println!("      --block-size SIZE    Pinned units per cube; SIZE must be {}", DEFAULT_BLOCK_SIZE);
     println!("      --float              Use float32");
     println!("      --double             Use float64 (default)");
-    println!("      --legacy-sqrt        Take the Boys-function square roots in float32");
     println!("      --check              Always run the fp64 CPU reference check");
     println!("      --no-check           Never run it");
     println!(
@@ -77,6 +76,8 @@ fn print_help(prog: &str) {
     println!("      --csv                CSV to stdout: one summary row");
     println!("      --csv-raw            CSV to stdout: one row per timed iteration");
     println!("      --no-energy          Skip energy measurement");
+    println!();
+    println!("The pinned configuration uses native-precision square roots.");
     println!();
     println!("In the CSV modes, the header, energy and correctness sections go to stderr.");
     println!();
@@ -125,7 +126,9 @@ pub fn parse_arguments() -> Args {
             }
             "--float" => args.precision = Precision::Float32,
             "--double" => args.precision = Precision::Float64,
-            "--legacy-sqrt" => args.legacy_sqrt = true,
+            "--legacy-sqrt" => fail(
+                "the pinned configuration requires native square roots; --legacy-sqrt is not supported",
+            ),
             "--check" => args.check = Check::Always,
             "--no-check" => args.check = Check::Never,
             "--max-check-atoms" => args.max_check_atoms = value(&argv, &mut i, "--max-check-atoms"),
@@ -148,6 +151,9 @@ pub fn parse_arguments() -> Args {
     }
     if args.input.is_none() && !args.list {
         fail("no input file given");
+    }
+    if args.block_size != DEFAULT_BLOCK_SIZE {
+        fail("the pinned configuration requires --block-size 256");
     }
     args.output = match (csv, csv_raw) {
         (true, true) => fail("--csv and --csv-raw are mutually exclusive"),

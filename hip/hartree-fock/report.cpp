@@ -219,11 +219,12 @@ void print_text_correctness(const Report& r, std::ostream& out)
 void print_csv(const Report& r, std::ostream& out, bool with_header)
 {
   if (with_header)
-    out << "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,num_times,"
+    out << "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,num_times,"
            "routine,min_s,max_s,avg_s,e2_energy,rel_err_ref,energy_j_per_iter,avg_power_w\n";
 
   out << csv_prefix(r) << sqrt_mode_name(r.sqrt_mode) << "," << csv_field(r.input) << ","
-      << r.natoms << "," << r.ngauss << "," << r.block_size << "," << r.num_times << ","
+      << r.natoms << "," << r.ngauss << "," << r.block_size << "," << r.quartets << ","
+      << r.grid << "," << r.num_times << ","
       << csv_field(r.fock.name) << ","
       << format_fixed(r.fock.min_s(), 9) << "," << format_fixed(r.fock.max_s(), 9) << ","
       << format_fixed(r.fock.avg_s(), 9) << ","
@@ -240,12 +241,13 @@ void print_csv(const Report& r, std::ostream& out, bool with_header)
 void print_csv_raw(const Report& r, std::ostream& out, bool with_header)
 {
   if (with_header)
-    out << "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,"
+    out << "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,"
            "routine,iteration,time_s\n";
 
   const std::string prefix = csv_prefix(r) + sqrt_mode_name(r.sqrt_mode) + "," + csv_field(r.input) + "," +
                              std::to_string(r.natoms) + "," + std::to_string(r.ngauss) + "," +
-                             std::to_string(r.block_size) + "," + csv_field(r.fock.name) + ",";
+                              std::to_string(r.block_size) + "," + std::to_string(r.quartets) + "," +
+                              std::to_string(r.grid) + "," + csv_field(r.fock.name) + ",";
   for (std::size_t j = 0; j < r.fock.times.size(); j++)
     out << prefix << (j + 1) << "," << format_fixed(r.fock.times[j], 9) << "\n";
   out << std::flush;

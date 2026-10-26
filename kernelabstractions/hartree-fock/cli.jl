@@ -53,7 +53,8 @@ function parse_args(argv::Vector{String})
             throw(CliError("--half is not supported: the 1e-12 screening thresholds are below " *
                            "the float16 range"))
         elseif f == "--legacy-sqrt"
-            a.legacy_sqrt = true
+            throw(CliError("the pinned configuration requires native square roots; " *
+                           "--legacy-sqrt is not supported"))
         elseif f == "--check"
             a.check = :force
         elseif f == "--no-check"
@@ -84,6 +85,7 @@ function parse_args(argv::Vector{String})
         i += 1
     end
     a.csv && a.csv_raw && throw(CliError("--csv and --csv-raw are mutually exclusive"))
+    a.block_size == 256 || throw(CliError("the pinned configuration requires --block-size 256"))
     length(positional) > 1 &&
         throw(CliError("expected one input file, got $(length(positional)): $(join(positional, ' '))"))
     isempty(positional) || (a.input = positional[1])
@@ -107,8 +109,7 @@ function print_help(io::IO = stdout)
       -n NUM                 timed iterations after 1 untimed run (default 10)
           --double           float64 (default)
           --float            float32
-          --legacy-sqrt      Boys-function square roots in float32 (sqrt mode legacy-sqrtf)
-          --block-size N     work-items per workgroup (default 256)
+          --block-size N     pinned work-items per workgroup; N must be 256
           --check            always run the fp64 CPU reference check
           --no-check         skip the fp64 CPU reference check
           --max-check-atoms N  run the check automatically up to N atoms (default 128)
@@ -118,6 +119,8 @@ function print_help(io::IO = stdout)
           --csv-raw          one CSV row per timed iteration on stdout (report on stderr)
           --no-energy        skip board-power measurement
       -h, --help             show this help
+
+    The pinned configuration uses native-precision square roots.
 
     Environment (optional):
       GPU_NAME     override the reported device name

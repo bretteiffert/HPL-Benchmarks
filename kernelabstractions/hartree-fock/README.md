@@ -29,7 +29,7 @@ Precision is selected at run time with a flag:
 
 There is no `--half`: the 1e-12 screening thresholds are below the float16 range.
 
-Other options: `-n` timed iterations after one untimed run (10), `--legacy-sqrt` (Boys-function square roots in float32), `--block-size` (256), `--check` / `--no-check` / `--max-check-atoms` (fp64 CPU reference, automatic up to 128 atoms), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-n` timed iterations after one untimed run (10), `--block-size 256` (the pinned value), `--check` / `--no-check` / `--max-check-atoms` (fp64 CPU reference, automatic up to 128 atoms), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. The pinned configuration uses native-precision square roots. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

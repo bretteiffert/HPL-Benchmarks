@@ -265,10 +265,11 @@ class Problem:
 # -- device run ------------------------------------------------------------------
 
 class FockBuild:
-    def __init__(self, problem, block_size, device_index):
+    def __init__(self, problem, block_size, device_index, num_warps):
         p = problem
         self.p = p
         self.block_size = block_size
+        self.num_warps = num_warps
         _, torch_real, tl_real = _PRECISIONS[p.precision]
         self.tl_real = tl_real
         torch.cuda.set_device(device_index)
@@ -295,6 +296,7 @@ class FockBuild:
             self.d_geom, self.d_xpnt, self.d_coef, self.d_dens, self.d_schwarz, self.d_fock,
             float(p.dtol), float(p.rcut), float(SQRTPI2_DEV),
             DT=self.tl_real, BLOCK=self.block_size, LEGACY=p.legacy,
+            num_warps=self.num_warps,
         )
 
     def untimed_run(self):

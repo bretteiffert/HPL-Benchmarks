@@ -44,10 +44,10 @@ for size in "${SIZE_CONFIGS[@]}"; do
   if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
     # CSV header once across the sweep.
     pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" \
-      python "$SCRIPT_DIR/main.py" "$input" -n 10 "$@" | tail -n +2
+      python "$SCRIPT_DIR/main.py" "$input" -n 10 --block-size 256 "$@" | tail -n +2
   else
     pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" \
-      python "$SCRIPT_DIR/main.py" "$input" -n 10 "$@"
+      python "$SCRIPT_DIR/main.py" "$input" -n 10 --block-size 256 "$@"
   fi
   first=0
 done

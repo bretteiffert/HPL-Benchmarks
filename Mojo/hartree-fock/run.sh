@@ -56,9 +56,9 @@ for size in "${SIZE_CONFIGS[@]}"; do
   input="$INPUT_DIR/$size"
   echo "hartree-fock - Mojo, ${BACKEND^^}: $size -n 10" >&2
   if [ "$CSV_MODE" -eq 1 ] && [ "$first" -eq 0 ]; then
-    run_one "$input" -n 10 "$@" | tail -n +2
+    run_one "$input" -n 10 --block-size 256 "$@" | tail -n +2
   else
-    run_one "$input" -n 10 "$@"
+    run_one "$input" -n 10 --block-size 256 "$@"
   fi
   first=0
 done

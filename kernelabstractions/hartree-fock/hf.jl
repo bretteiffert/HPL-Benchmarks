@@ -185,7 +185,7 @@ function HFDevice(backend, S, block_size::Int, legacy)
 end
 
 _launch(d::HFDevice) = d.kern(d.fock, d.nnnn, d.ngauss, d.natoms, d.geom, d.xpnt, d.coef,
-                             d.dens, d.schwarz, d.legacy; ndrange = d.nnnn)
+                              d.dens, d.schwarz, d.legacy; ndrange = d.nnnn + 1)
 
 "Untimed run: zero the Fock matrix, build it, wait."
 function launch_fock!(d::HFDevice{T}) where {T}
@@ -196,12 +196,8 @@ function launch_fock!(d::HFDevice{T}) where {T}
     return nothing
 end
 
-"Timed run: zero the Fock matrix (untimed), then time the build (seconds)."
-function timed_fock!(d::HFDevice{T}) where {T}
-    fill!(d.fock, zero(T))
-    device_sync()
-    return elapsed_seconds(() -> _launch(d))
-end
+"Timed run: add another build into the existing Fock matrix, as the native benchmark does."
+timed_fock!(d::HFDevice) = elapsed_seconds(() -> _launch(d))
 
 read_fock(d::HFDevice) = Array(d.fock)
 

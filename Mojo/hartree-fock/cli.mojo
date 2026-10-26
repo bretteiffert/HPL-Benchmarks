@@ -54,15 +54,13 @@ Options:
                            same index (default: 0)
   -n, --iters NUM          Timed Fock builds after 1 untimed run, NUM >= 1
                            (default: 10)
-      --block-size SIZE    Threads per block, at most the device limit
+      --block-size SIZE    Pinned threads per block; SIZE must be 256
                            (default: 256)
       --double             float64 (default)
       --float              float32
                            (the last precision flag wins; there is no --half:
                            the 1e-12 screening thresholds are below float16
                            range)
-      --legacy-sqrt        Evaluate the Boys-function square roots in float32
-                           (sqrt mode "legacy-sqrtf"; default "native")
       --check              Always compare the untimed run with the float64 CPU
                            reference
       --no-check           Skip the CPU reference
@@ -72,6 +70,8 @@ Options:
       --csv-raw            One CSV row per timed iteration on stdout; report
                            on stderr (not with --csv)
       --no-energy          Skip board-power measurement
+
+The pinned configuration uses native-precision square roots.
 
 Environment (all optional):
   GPU_NAME                 Device name to report instead of the queried one
@@ -134,7 +134,10 @@ def parse_arguments() raises -> Args:
                 " below float16 range"
             )
         elif a == "--legacy-sqrt":
-            args.legacy_sqrt = True
+            raise Error(
+                "the pinned configuration requires native square roots;"
+                " --legacy-sqrt is not supported"
+            )
         elif a == "--check":
             args.run_check = True
             args.force_check = True
@@ -161,6 +164,8 @@ def parse_arguments() raises -> Args:
         i += 1
     if args.csv and args.csv_raw:
         raise Error("--csv and --csv-raw are mutually exclusive")
+    if args.block_size != 256:
+        raise Error("the pinned configuration requires --block-size 256")
     if not args.help and not args.list_devices and args.input.byte_length() == 0:
         raise Error("missing INPUT file")
     return args^

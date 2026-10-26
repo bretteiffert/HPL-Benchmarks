@@ -23,6 +23,7 @@ class Report:
         self.quartets = 0
         self.block_size = 0
         self.grid = 0
+        self.num_warps = 0
         self.num_times = 0           # timed iterations, after one untimed run
         self.check = ""              # header text for the Check line
         self.timing = "device timestamps"
@@ -77,7 +78,9 @@ def text_header(r):
         _key("Input", "%s (%s atoms, %s Gaussians)"
              % (r.input, count(r.natoms), count(r.ngauss))),
         _key("Quartets", "%s (%s atom pairs)" % (count(r.quartets), count(r.atom_pairs))),
-        _key("Block size", count(r.block_size)),
+        _key("Block size", "%s (%s %s)" % (
+            count(r.block_size), count(r.num_warps),
+            "warps" if r.backend == "CUDA" else "waves")),
         _key("Grid", "%s program%s" % (count(r.grid), "" if r.grid == 1 else "s")),
         _key("Iterations", "%s (after 1 untimed run)" % count(r.num_times)),
         _key("Check", r.check),
@@ -156,7 +159,7 @@ def _prefix(r):
 
 
 def csv_summary(r):
-    lines = [_PREFIX + ",sqrt_mode,input,natoms,ngauss,block_size,num_times,routine,"
+    lines = [_PREFIX + ",sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,num_times,routine,"
              "min_s,max_s,avg_s,e2_energy,rel_err_ref,energy_j_per_iter,avg_power_w"]
     tmin, tmax, tavg = _stats(r.times)
     c = r.correctness
@@ -165,16 +168,17 @@ def csv_summary(r):
         energy = "%.9f,%.4f" % (r.energy.joules_per_iter, r.energy.avg_power_w)
     else:
         energy = ","
-    lines.append("%s,%s,%s,%d,%d,%d,%d,%s,%.9f,%.9f,%.9f,%.16e,%s,%s" % (
+    lines.append("%s,%s,%s,%d,%d,%d,%d,%d,%d,%s,%.9f,%.9f,%.9f,%.16e,%s,%s" % (
         _prefix(r), r.sqrt_mode, csv_field(r.input), r.natoms, r.ngauss, r.block_size,
-        r.num_times, ROUTINE, tmin, tmax, tavg, c.e2_energy, rel, energy))
+        r.quartets, r.grid, r.num_times, ROUTINE, tmin, tmax, tavg, c.e2_energy, rel, energy))
     return "\n".join(lines) + "\n"
 
 
 def csv_raw(r):
-    lines = [_PREFIX + ",sqrt_mode,input,natoms,ngauss,block_size,routine,iteration,time_s"]
-    head = "%s,%s,%s,%d,%d,%d,%s" % (_prefix(r), r.sqrt_mode, csv_field(r.input),
-                                     r.natoms, r.ngauss, r.block_size, ROUTINE)
+    lines = [_PREFIX + ",sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,routine,iteration,time_s"]
+    head = "%s,%s,%s,%d,%d,%d,%d,%d,%s" % (_prefix(r), r.sqrt_mode, csv_field(r.input),
+                                             r.natoms, r.ngauss, r.block_size,
+                                             r.quartets, r.grid, ROUTINE)
     for i, t in enumerate(r.times, start=1):
         lines.append("%s,%d,%.9f" % (head, i, t))
     return "\n".join(lines) + "\n"

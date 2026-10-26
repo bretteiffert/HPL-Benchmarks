@@ -10,7 +10,6 @@ import report
 
 INT32_MAX = 2 ** 31 - 1
 UINT32_MAX = 2 ** 32 - 1
-TRITON_NUM_WARPS = 4  # Triton's default launch (num_warps=4) on NVIDIA and AMD
 
 
 def fail(what, hint="--help"):
@@ -18,7 +17,7 @@ def fail(what, hint="--help"):
     sys.exit(1)
 
 
-def validate(opts, be, props, grid, max_block):
+def validate(opts, be, props, grid, max_block, num_warps):
     bs = opts.block_size
     if bs & (bs - 1):
         fail("block size %s is not a power of two (Triton's tl.arange requires one)"
@@ -27,15 +26,16 @@ def validate(opts, be, props, grid, max_block):
         fail("block size %s exceeds Triton's maximum tensor size of %s elements"
              % (report.count(bs), report.count(max_block)))
     if grid > INT32_MAX:
-        fail("grid of %s programs exceeds the maximum grid size %s; use a larger "
-             "--block-size or a smaller input" % (report.count(grid), report.count(INT32_MAX)))
+        fail("grid of %s programs exceeds the maximum grid size %s; the pinned block "
+             "size is 256, so use a smaller input"
+             % (report.count(grid), report.count(INT32_MAX)))
     if be == backend.HIP:
         warp = int(getattr(props, "warp_size", 64) or 64)
-        work_items = grid * TRITON_NUM_WARPS * warp
+        work_items = grid * num_warps * warp
         if work_items > UINT32_MAX:
             fail("grid of %s programs x %d threads exceeds HIP's limit of %s work-items "
-                 "per launch; use a larger --block-size or a smaller input"
-                 % (report.count(grid), TRITON_NUM_WARPS * warp, report.count(UINT32_MAX)))
+                 "per launch; the pinned block size is 256, so use a smaller input"
+                  % (report.count(grid), num_warps * warp, report.count(UINT32_MAX)))
     # The kernel accumulates the Fock matrix with float atomic adds.
     if be == backend.CUDA and opts.precision == "float64":
         major = int(getattr(props, "major", 0) or 0)
@@ -87,7 +87,8 @@ def main(argv):
     except hf.InputError as e:
         fail(str(e))
     grid = prob.grid(opts.block_size)
-    validate(opts, be, props, grid, tl.TRITON_MAX_TENSOR_NUMEL)
+    num_warps = 8 if be == backend.CUDA else 4
+    validate(opts, be, props, grid, tl.TRITON_MAX_TENSOR_NUMEL, num_warps)
 
     run_check = opts.run_check and (opts.force_check or prob.natoms <= opts.max_check_atoms)
 
@@ -104,6 +105,7 @@ def main(argv):
     r.quartets = prob.nnnn
     r.block_size = opts.block_size
     r.grid = grid
+    r.num_warps = num_warps
     r.num_times = opts.num_times
     r.energy_enabled = opts.energy
     r.header_notes = list(info.notes)
@@ -121,7 +123,7 @@ def main(argv):
     info_out.flush()
 
     try:
-        run = hf.FockBuild(prob, opts.block_size, opts.device)
+        run = hf.FockBuild(prob, opts.block_size, opts.device, num_warps)
     except torch.cuda.OutOfMemoryError:
         fail("not enough device memory for the %s-atom input" % report.count(prob.natoms))
 

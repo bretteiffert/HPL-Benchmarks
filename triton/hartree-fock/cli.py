@@ -69,7 +69,8 @@ def parse(argv):
         elif a == "--half":
             half = True
         elif a == "--legacy-sqrt":
-            opts.legacy_sqrt = True
+            raise UsageError("the pinned configuration requires native square roots; "
+                             "--legacy-sqrt is not supported")
         elif a == "--check":
             opts.run_check, opts.force_check = True, True
         elif a == "--no-check":
@@ -97,6 +98,8 @@ def parse(argv):
                          "below the float16 range (use --double or --float)")
     if opts.csv and opts.csv_raw:
         raise UsageError("--csv and --csv-raw cannot be used together")
+    if opts.block_size != DEFAULT_BLOCK_SIZE:
+        raise UsageError("the pinned configuration requires --block-size 256")
     if opts.input is None:
         raise UsageError("missing input file, e.g. ../../data/hartree-fock/he64")
     return opts
@@ -113,10 +116,9 @@ Usage: %s INPUT [OPTIONS]
 
 Options:
   -n, --iters NUM        timed iterations after 1 untimed run (default %d)
-      --block-size N     quartets per program, a power of two (default %d)
+      --block-size N     pinned quartets per program; N must be 256 (default %d)
       --double           float64 (default)
       --float            float32
-      --legacy-sqrt      evaluate the two square roots in float32 (as legacy sqrtf)
       --check            always run the float64 CPU reference check
       --no-check         skip the CPU reference check
       --max-check-atoms N  check only inputs with at most N atoms (default %d)
@@ -127,7 +129,8 @@ Options:
       --list             list devices (index: name) and exit
   -h, --help             show this help and exit
 
-There is no --half: the 1e-12 screening thresholds are below the float16 range.
+The pinned configuration uses native-precision square roots. There is no
+--half: the 1e-12 screening thresholds are below the float16 range.
 The last precision flag wins; the last of --check / --no-check wins.
 Options take the form '--flag value'. Only the untimed run's Fock matrix is
 checked, because the timed runs keep accumulating into it.

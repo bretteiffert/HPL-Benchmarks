@@ -317,7 +317,7 @@ fn csv_field(s: &str) -> String {
 
 fn csv_prefix(m: &Meta) -> String {
     format!(
-        "{},{},{},{},{},{},{},{},{}",
+        "{},{},{},{},{},{},{},{},{},{},{}",
         IMPLEMENTATION,
         m.backend,
         csv_field(&m.device),
@@ -326,7 +326,9 @@ fn csv_prefix(m: &Meta) -> String {
         csv_field(&m.input),
         m.natoms,
         m.ngauss,
-        m.block_size
+        m.block_size,
+        m.quartets,
+        m.cubes
     )
 }
 
@@ -334,7 +336,7 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     let m = &r.meta;
     writeln!(
         out,
-        "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,\
+        "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,\
          num_times,routine,min_s,max_s,avg_s,e2_energy,rel_err_ref,energy_j_per_iter,avg_power_w"
     )?;
     let (energy_j, power_w) = match &r.energy {
@@ -367,7 +369,7 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
 fn write_csv_raw(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     writeln!(
         out,
-        "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,\
+        "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,\
          routine,iteration,time_s"
     )?;
     let prefix = csv_prefix(&r.meta);

@@ -84,7 +84,7 @@ function print_header(io::IO, r::Report)
     kv(io, "Precision", r.precision)
     kv(io, "Sqrt mode", r.sqrt_mode)
     kv(io, "Input", "$(r.input) ($(thousands(r.natoms)) atoms, $(thousands(r.ngauss)) Gaussians)")
-    kv(io, "Work items", "$(thousands(r.nnnn)) ($(thousands(cld(r.nnnn, r.block_size))) workgroups)")
+    kv(io, "Quartets", "$(thousands(r.nnnn)) ($(thousands(cld(r.nnnn + 1, r.block_size))) workgroups)")
     kv(io, "Block size", string(r.block_size))
     kv(io, "Iterations", "$(r.num_times) (after 1 untimed run)")
     kv(io, "Timing", r.timing)
@@ -154,11 +154,11 @@ prefix(r::Report) = join((IMPLEMENTATION, csv_field(r.backend), csv_field(r.devi
                           r.precision), ",")
 
 const CSV_HEADER = "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss," *
-                   "block_size,num_times,routine,min_s,max_s,avg_s,e2_energy,rel_err_ref," *
+                   "block_size,quartets,groups,num_times,routine,min_s,max_s,avg_s,e2_energy,rel_err_ref," *
                    "energy_j_per_iter,avg_power_w"
 
 const CSV_RAW_HEADER = "implementation,backend,device,precision,sqrt_mode,input,natoms," *
-                       "ngauss,block_size,routine,iteration,time_s"
+                       "ngauss,block_size,quartets,groups,routine,iteration,time_s"
 
 f9(x) = fixed(x, 9)
 
@@ -169,7 +169,8 @@ function print_csv(io::IO, r::Report)
     ej, ew = e === nothing ? ("", "") : (fixed(joules_per_iter(e), 6), fixed(e.avg_power_w, 2))
     rel = isnan(r.rel_err_ref) ? "" : sci(r.rel_err_ref, 6)
     println(io, join((prefix(r), r.sqrt_mode, csv_field(r.input), r.natoms, r.ngauss,
-                      r.block_size, r.num_times, ROUTINE, f9(tmin), f9(tmax), f9(tavg),
+                      r.block_size, r.nnnn, cld(r.nnnn + 1, r.block_size), r.num_times,
+                      ROUTINE, f9(tmin), f9(tmax), f9(tavg),
                       sci(r.e2_energy, 15), rel, ej, ew), ","))
 end
 
@@ -177,7 +178,8 @@ function print_csv_raw(io::IO, r::Report)
     println(io, CSV_RAW_HEADER)
     for (k, t) in enumerate(r.times)
         println(io, join((prefix(r), r.sqrt_mode, csv_field(r.input), r.natoms, r.ngauss,
-                          r.block_size, ROUTINE, k, f9(t)), ","))
+                          r.block_size, r.nnnn, cld(r.nnnn + 1, r.block_size),
+                          ROUTINE, k, f9(t)), ","))
     end
 end
 

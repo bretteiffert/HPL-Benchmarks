@@ -102,7 +102,7 @@ def run[dtype: DType, legacy: Bool](args: Args) raises:
             + String(args.block_size)
             + ", above the device grid limit of "
             + String(info.max_grid_x)
-            + " (use a larger --block-size)"
+            + " (the pinned block size is 256; use a smaller input)"
         )
     comptime if BACKEND == "cuda" and dtype == DType.float64:
         # The Fock accumulation uses float64 atomic add: sm_60 and newer.

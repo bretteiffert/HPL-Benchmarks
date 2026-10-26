@@ -425,13 +425,17 @@ def _shape(r: Report) -> String:
         + ","
         + String(r.block_size)
         + ","
+        + String(r.quartets)
+        + ","
+        + String(r.blocks)
+        + ","
     )
 
 
 def csv_header() -> String:
     return (
         CSV_PREFIX
-        + "sqrt_mode,input,natoms,ngauss,block_size,num_times,routine,"
+        + "sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,num_times,routine,"
         + "min_s,max_s,avg_s,e2_energy,rel_err_ref,energy_j_per_iter,"
         + "avg_power_w"
     )
@@ -457,7 +461,7 @@ def csv_rows(r: Report) -> String:
 def csv_raw_header() -> String:
     return (
         CSV_PREFIX
-        + "sqrt_mode,input,natoms,ngauss,block_size,routine,iteration,time_s"
+        + "sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,routine,iteration,time_s"
     )
 
 

@@ -36,11 +36,11 @@ function validate(a::Args, nnnn::Int)
     max_wg = max_workgroup_size()
     a.block_size <= max_wg ||
         fail("block size $(a.block_size) exceeds the device maximum of $max_wg work-items per workgroup")
-    groups = cld(nnnn, a.block_size)
+    groups = cld(nnnn + 1, a.block_size)
     max_g = max_groups()
     groups <= max_g ||
-        fail("$(nnnn) work items need $groups workgroups of $(a.block_size); the device maximum " *
-             "is $max_g (use a larger --block-size)")
+        fail("$(nnnn + 1) work items need $groups workgroups of $(a.block_size); the device maximum " *
+             "is $max_g (the pinned block size is 256; use a smaller input)")
     # Float atomic add (Atomix) is native or a CAS loop on both backends for
     # float32/float64; float16 is rejected by the CLI.
     return nothing
@@ -151,7 +151,7 @@ function run_benchmark(::Type{T}, a::Args) where {T}
     d = HFDevice(backend, S, a.block_size, legacy)
 
     # Untimed run: compiles the kernel and gives the Fock matrix that is checked
-    # (timed runs zero and rebuild it).
+    # (timed runs keep accumulating into it, matching the native benchmark).
     launch_fock!(d)
     h_fock = read_fock(d)
 

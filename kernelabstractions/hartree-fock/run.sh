@@ -42,7 +42,7 @@ first=1
 for name in "${INPUTS[@]}"; do
   echo "run.sh: $backend, input $name" >&2
   cmd=("$JULIA" --project="$PROJECT" -O3 --check-bounds=no "$ROOT/main.jl"
-       "$DATA/$name" -n 10 "$@")
+       "$DATA/$name" -n 10 --block-size 256 "$@")
   if [[ $csv -eq 1 && $first -eq 0 ]]; then
     "${cmd[@]}" | tail -n +2        # CSV header only once across the sweep
   else

@@ -20,10 +20,10 @@ Precision is selected at run time with a flag:
 ```bash
 --double        # fp64, the default
 --float         # fp32
---legacy-sqrt   # take the Boys-function square roots in fp32
 ```
 
 The fp64 CPU reference check runs automatically up to 128 atoms; it scales as natoms⁴, so it is skipped for larger inputs.
+The pinned configuration uses native-precision square roots.
 
 ```bash
 --check                 # always run the reference check
@@ -35,7 +35,7 @@ Other options:
 
 ```bash
 -n, --numtimes NUM      # timed iterations (default 10), after one untimed run
---block-size SIZE       # units per cube (default 256)
+--block-size 256        # pinned units per cube
 --device INDEX          # device to run on (default 0); --list shows them
 --csv                   # CSV to stdout: one summary row
 --csv-raw               # CSV to stdout: one row per timed iteration
