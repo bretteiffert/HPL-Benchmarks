@@ -2,39 +2,58 @@
 
 ## Setup
 
-Install the environment for the backend on the current machine
+Install [pixi](https://pixi.sh), then the environment for the backend on the current machine (Python 3.12, PyTorch 2.13.0 and Triton 3.7.1; the NVIDIA or AMD driver must already be installed):
+
 ```sh
 pixi install -e cuda
 # or
 pixi install -e hip
 ```
 
+Each environment holds exactly one backend; the plain default environment has no GPU backend and the benchmark refuses to run in it.
+
+Energy is measured through `energy.py` in `../../dependencies`, which loads `libkernelenergy.so` from the same folder, so build that library first. Pass `--no-energy` to run without it.
+
 ## Configuration
 
-Set precision
-```python
-precision = torch.float32
-precision_str = "float"
+Precision is selected at run time with a flag:
+
+```sh
+--double   # fp64, the default
+--float    # fp32
+--half     # fp16, grids of at most 105 per side
 ```
 
-## CUDA
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size X[,Y[,Z]]` points per program (1024,1,1; powers of two), `-n` timed iterations (100, after 1 untimed run), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
+
+## NVIDIA CUDA
+
 Run one
-```sh
-pixi run -e cuda python laplacian.py 1024 1024 1024 1024 1 1
-```
 
-Run the tile sweep
 ```sh
-bash run_cuda.sh
-```
-
-## HIP
-Run one
-```sh
-pixi run -e hip python laplacian.py 1024 1024 1024 512 1 1
+pixi run -e cuda python main.py -s 1024 --block-size 1024,1,1
 ```
 
 Run the sweep
+
 ```sh
-bash run_hip.sh
+bash run.sh cuda
 ```
+
+## AMD ROCm/HIP
+
+Run one
+
+```sh
+pixi run -e hip python main.py -s 1024 --block-size 512,1,1
+```
+
+Run the sweep
+
+```sh
+bash run.sh hip
+```
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.

@@ -2,71 +2,53 @@
 
 ## Setup
 
-```bash
-julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+Install Julia 1.13 (the Manifests were resolved with 1.13.1) and the vendor driver for the selected backend. CUDA.jl downloads its CUDA runtime as an artifact; AMDGPU.jl uses the system ROCm and finds it through `ROCM_PATH`.
 
-or
-```bash
-julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+    export ROCM_PATH=[path-to-rocm]
 
-The default deck is `../../data/miniBUDE/bm1` relative to this benchmark.
-Override it with `--deck` when needed.
+Each backend has its own environment, so one checkout serves both vendors:
 
-## Run
+    env/cuda   KernelAbstractions + CUDA.jl + SpecialFunctions
+    env/hip    KernelAbstractions + AMDGPU.jl + SpecialFunctions
 
-```bash
-julia --project=env/cuda -O3 --check-bounds=no miniBUDE.jl \
-  --backend cuda -n 8 -p 64
-```
+The environment you activate selects the backend. Install it once:
 
-or
-```bash
-julia --project=env/hip -O3 --check-bounds=no miniBUDE.jl \
-  --backend hip -n 8 -p 64
-```
+    julia --project=env/cuda -e 'using Pkg; Pkg.instantiate()'
+    julia --project=env/hip  -e 'using Pkg; Pkg.instantiate()'
 
-Options:
+Energy is measured through ../../dependencies/energy.jl, which loads libkernelenergy.so from the same folder, so build that library first. Runs with `--no-energy` need neither.
 
-```text
---backend cuda|hip
--n NUM                 Timed kernel iterations
--p 16|32|64            Precision
---poses NUM             Number of poses; 0 uses all deck poses
---ppwi LIST|all         Poses per work-item
---wgsize LIST           Work-group sizes
---deck DIR              Input deck directory
---out PATH              Save energies
---rows NUM              Print energy rows
---csv
--h
-```
+The default deck is ../../data/miniBUDE/bm1; `--deck DIR` selects another.
 
-Float32 and Float64 are normal modes. Float16 is experimental and depends on
-device support.
+## Configuration
 
-## Sweep scripts
+Precision is selected at run time with a flag:
 
-```bash
-bash run_cuda.sh
-```
+    --double   # fp64, the default
+    --float    # fp32; one untimed fp64 pass is run as the reference
 
-or
-```bash
-bash run_hip.sh
-```
+Other options use the upstream miniBUDE names: `-i` timed iterations (8), `--warmup` (2), `-n` poses (all), `-p` PPWI list or `all` (1), `-w` work-group size list (1), `--deck`, `-o` save the first configuration's energies, `-r` energies to print (8), `-d`/`--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. One run sweeps every (PPWI, wgsize) combination and skips those that do not divide the pose count. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
-Optional overrides:
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
-```bash
-DECK=../../data/miniBUDE/bm1 PRECISION=32 NUM_TIMES=20 bash run_cuda.sh
-```
+## NVIDIA CUDA
 
-or
-```bash
-DECK=../../data/miniBUDE/bm1 PRECISION=64 NUM_TIMES=20 bash run_hip.sh
-```
+Run one
 
-CSV output contains precision, PPWI, work-group, timing, throughput, and
-correctness columns.
+    julia --project=env/cuda -O3 --check-bounds=no main.jl -p 8 -w 32
+
+Run the sweep
+
+    bash run.sh cuda
+
+## AMD ROCm/HIP
+
+Run one
+
+    julia --project=env/hip -O3 --check-bounds=no main.jl -p 8 -w 64
+
+Run the sweep
+
+    bash run.sh hip
+
+Extra arguments are passed to the sweep run, for example `bash run.sh cuda --float --csv > results.csv`.

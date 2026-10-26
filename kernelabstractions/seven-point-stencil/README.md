@@ -2,74 +2,54 @@
 
 ## Setup
 
-```bash
-julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+Install Julia 1.13 (the Manifests were resolved with 1.13.1) and the vendor driver for the selected backend. CUDA.jl downloads its CUDA runtime as an artifact; AMDGPU.jl uses the system ROCm and finds it through `ROCM_PATH`.
 
-or
-```bash
-julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+    export ROCM_PATH=[path-to-rocm]
 
-## Run
+Each backend has its own environment, so one checkout serves both vendors:
 
-```bash
-julia --project=env/cuda -O3 --check-bounds=no seven-point-stencil.jl \
-  --backend cuda -s 256 -n 100 -p 32
-```
+    env/cuda   KernelAbstractions + CUDA.jl
+    env/hip    KernelAbstractions + AMDGPU.jl
 
-or
-```bash
-julia --project=env/hip -O3 --check-bounds=no seven-point-stencil.jl \
-  --backend hip -s 256 -n 100 -p 64
-```
+The environment you activate selects the backend. Install it once:
 
-Options:
+    julia --project=env/cuda -e 'using Pkg; Pkg.instantiate()'
+    julia --project=env/hip  -e 'using Pkg; Pkg.instantiate()'
 
-```text
---backend cuda|hip
--s SIZE
--n NUM
--p 16|32|64
---csv
--h, --help
-```
+Energy is measured through ../../dependencies/energy.jl, which loads libkernelenergy.so from the same folder, so build that library first. Runs with `--no-energy` need neither.
 
-`-s` sets all three grid dimensions (`SIZE × SIZE × SIZE`). `-n` sets the
-number of timed stencil iterations. Precision is selected at runtime; Float16
-is experimental and depends on backend and device support.
+## Configuration
 
-## Run scripts
+Precision is selected at run time with a flag:
 
-Each script runs a small size sweep. Override the defaults with environment
-variables:
+    --double   # fp64, the default
+    --float    # fp32
+    --half     # fp16, only up to 105 points per side
 
-```bash
-SIZE=512 NUM_TIMES=100 PRECISION=64 bash run_cuda.sh
-```
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `-n` timed iterations after one untimed run (100), `--block-size X[,Y[,Z]]` (1024,1,1), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
-or
-```bash
-SIZE=512 NUM_TIMES=100 PRECISION=32 bash run_hip.sh
-```
+Bandwidth counts the theoretical traffic: every point except the 8 corners and 12 edges read once, every interior point written once. Correctness checks ∇²u = 3 at the interior points of the untimed run, on the device.
 
-## CSV output
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
-Add `--csv` to write performance rows to stdout with these columns:
+## NVIDIA CUDA
 
-```text
-backend,GPU,precision,L,blk_x,blk_y,blk_z,BW_GBs
-```
+Run one
 
-Correctness diagnostics are written to stderr:
+    julia --project=env/cuda -O3 --check-bounds=no main.jl -s 1024 -n 100
 
-```bash
-julia --project=env/cuda seven-point-stencil.jl \
-  --backend cuda -s 256 -n 10 --csv > results.csv
-```
+Run the sweep
 
-or
-```bash
-julia --project=env/hip seven-point-stencil.jl \
-  --backend hip -s 256 -n 10 --csv > results.csv
-```
+    bash run.sh cuda
+
+## AMD ROCm/HIP
+
+Run one
+
+    julia --project=env/hip -O3 --check-bounds=no main.jl -s 1024 -n 100
+
+Run the sweep
+
+    bash run.sh hip
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.

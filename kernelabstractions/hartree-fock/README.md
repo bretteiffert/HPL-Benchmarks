@@ -1,58 +1,56 @@
-# Hartree–Fock - KernelAbstractions
+# Hartree-Fock - KernelAbstractions
 
 ## Setup
 
-```bash
-julia --project=env/cuda -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+Install Julia 1.13 (the Manifests were resolved with 1.13.1) and the vendor driver for the selected backend. CUDA.jl downloads its CUDA runtime as an artifact; AMDGPU.jl uses the system ROCm and finds it through `ROCM_PATH`.
 
-or
-```bash
-julia --project=env/hip -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-```
+    export ROCM_PATH=[path-to-rocm]
 
-## Run
+Each backend has its own environment, so one checkout serves both vendors:
 
-The input file is the first argument. Backend selection is per invocation:
+    env/cuda   KernelAbstractions + CUDA.jl + Atomix + SpecialFunctions
+    env/hip    KernelAbstractions + AMDGPU.jl + Atomix + SpecialFunctions
 
-```bash
-julia --project=env/cuda -O3 --check-bounds=no hartree-fock.jl ../../data/hartree-fock/he128 --backend cuda -n 10
-```
+The environment you activate selects the backend. Install it once:
 
-or
-```bash
-julia --project=env/hip -O3 --check-bounds=no hartree-fock.jl ../../data/hartree-fock/he128 --backend hip -n 10
-```
+    julia --project=env/cuda -e 'using Pkg; Pkg.instantiate()'
+    julia --project=env/hip  -e 'using Pkg; Pkg.instantiate()'
 
-Supported options:
+Energy is measured through ../../dependencies/energy.jl, which loads libkernelenergy.so from the same folder, so build that library first. Runs with `--no-energy` need neither.
 
-```text
---backend cuda|hip
--p 16|32|64
--n NUM
---csv
---check
---no-check
--h
-```
+Inputs are read from ../../data/hartree-fock (he16 … he256).
 
-The default arithmetic is Float64. Use `-p 32` for Float32 or `-p 16` for the
-experimental Float16 path. The default backend is CUDA. The selected runtime
-uses its default visible GPU; there is no device-index argument.
+## Configuration
 
-## Sweep scripts
+Precision is selected at run time with a flag:
 
-```bash
-INPUT=../../data/hartree-fock/he128 bash run_cuda.sh
-```
+    --double   # fp64, the default
+    --float    # fp32
 
-or
-```bash
-INPUT=../../data/hartree-fock/he128 bash run_hip.sh
-```
+There is no `--half`: the 1e-12 screening thresholds are below the float16 range.
 
-CSV columns:
+Other options: `-n` timed iterations after one untimed run (10), `--legacy-sqrt` (Boys-function square roots in float32), `--block-size` (256), `--check` / `--no-check` / `--max-check-atoms` (fp64 CPU reference, automatic up to 128 atoms), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
-```text
-backend,GPU,precision,sqrt_mode,natoms,ngauss,exec_time_ms
-```
+In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
+
+## NVIDIA CUDA
+
+Run one
+
+    julia --project=env/cuda -O3 --check-bounds=no main.jl ../../data/hartree-fock/he128 -n 10
+
+Run the sweep
+
+    bash run.sh cuda
+
+## AMD ROCm/HIP
+
+Run one
+
+    julia --project=env/hip -O3 --check-bounds=no main.jl ../../data/hartree-fock/he128 -n 10
+
+Run the sweep
+
+    bash run.sh hip
+
+Extra arguments are passed to every run of the sweep, for example `bash run.sh cuda --float --csv > results.csv`.

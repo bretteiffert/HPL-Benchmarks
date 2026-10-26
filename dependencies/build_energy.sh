@@ -68,6 +68,7 @@ else
     echo ">> rocm: $ROCM"
     hipcc -O2 -fPIC -shared -pthread \
         -I"$ROCM/include" \
+        -I"$ROCM/lib/rocm_sysdeps/include" \
         "$SRC" -o "$OUT" \
         -L"$ROCM/lib" -Wl,-rpath,"$ROCM/lib" \
         -lrocm_smi64 -lamdhip64
