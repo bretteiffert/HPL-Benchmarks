@@ -47,14 +47,9 @@ function validate(::Type{T}, a::Args) where {T}
 
     cu = compute_unit_count()
     unit = compute_unit_label()
-    if cu === nothing
-        dot_groups = 64
-        desc = "64 (fallback)"
-        push!(notes, "could not query the $unit count; Dot uses 64 groups")
-    else
-        dot_groups = 4 * cu
-        desc = "$dot_groups (4 × $cu $unit)"
-    end
+    cu === nothing && fail("could not query the $unit count; the pinned Dot configuration requires 4 × SM/CU groups")
+    dot_groups = 4 * cu
+    desc = "$dot_groups (4 × $cu $unit)"
 
     max_g = max_groups()
     a.array_size ÷ a.block_size <= max_g ||

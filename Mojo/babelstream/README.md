@@ -20,7 +20,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16
 
-Other options: `-s` array size (33554432), `-n` iterations (1000, the first is a warm-up), `--block-size` (1024; 32 to 1024, powers of two), `--device INDEX`, `--list`, `--mibibytes`, `--csv`, `--csv-raw`, `--no-energy`. The dot kernel's group count is 4 × the device's SM/CU count, queried from the device. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-s` array size (33554432), `-n` iterations (1000, the first is a warm-up), `--block-size 256` (the pinned value), `--device INDEX`, `--list`, `--mibibytes`, `--csv`, `--csv-raw`, `--no-energy`. The dot kernel's group count is 4 × the device's SM/CU count, queried from the device. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

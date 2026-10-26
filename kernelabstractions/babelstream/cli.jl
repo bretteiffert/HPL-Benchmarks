@@ -12,7 +12,7 @@ Base.@kwdef mutable struct Args
     array_size::Int = 33_554_432
     num_times::Int = 1000
     precision::Symbol = :double        # :double | :float | :half
-    block_size::Int = 1024
+    block_size::Int = 256
     device::Int = 0
     csv::Bool = false
     csv_raw::Bool = false
@@ -74,6 +74,7 @@ function parse_args(argv::Vector{String})
         i += 1
     end
     a.csv && a.csv_raw && throw(CliError("--csv and --csv-raw are mutually exclusive"))
+    a.block_size == 256 || throw(CliError("the pinned configuration requires --block-size 256"))
     return a
 end
 
@@ -91,9 +92,8 @@ function print_help(io::IO = stdout)
           --double           float64 (default)
           --float            float32
           --half             float16
-          --block-size N     work-items per workgroup for Init/Copy/Mul/Add/Triad
-                             (default 1024; SIZE must be a multiple of N).
-                             Dot always uses 1024.
+          --block-size N     pinned work-items per workgroup for every kernel;
+                             N must be 256 (default 256).
           --device INDEX     device index; the energy profiler uses the same index (default 0)
           --list             list devices (index: name) and exit
           --csv              summary CSV on stdout (report on stderr)

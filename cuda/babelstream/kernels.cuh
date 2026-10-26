@@ -23,7 +23,7 @@
 
 // Shared-memory slots in dot_kernel. The launch block size must be a power
 // of two no larger than this (validated on the host before launch).
-#define TBSIZE 1024
+#define TBSIZE 256
 
 #ifndef FMAD
 #define FMAD 1

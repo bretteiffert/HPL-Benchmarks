@@ -96,17 +96,9 @@ int run(const Options& o)
   r.mibibytes = o.mibibytes;
   r.header_notes = dev.notes;
 
-  if (dev.compute_units > 0)
-  {
-    r.dot_groups = 4 * dev.compute_units;
-  }
-  else
-  {
-    r.dot_groups = 64;
-    std::string unit = compute_unit_label();   // "SMs" -> "SM"
-    if (!unit.empty() && unit.back() == 's') unit.pop_back();
-    r.header_notes.push_back(unit + " count unavailable from the runtime and vendor library; Dot uses 64 groups");
-  }
+  if (dev.compute_units <= 0)
+    throw std::runtime_error("compute-unit count is unavailable; the pinned Dot configuration requires 4 x CU groups");
+  r.dot_groups = 4 * dev.compute_units;
 
   validate(o, dev, r.dot_groups);
 

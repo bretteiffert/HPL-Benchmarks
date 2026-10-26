@@ -9,7 +9,7 @@ pub enum Precision {
     Float64,
 }
 
-pub const DEFAULT_BLOCK_SIZE: u32 = 1024;
+pub const DEFAULT_BLOCK_SIZE: u32 = 256;
 
 pub struct Args {
     pub list: bool,
@@ -50,8 +50,10 @@ fn print_help(prog: &str) {
     println!("                           must be a multiple of the block size");
     println!("  -n  --numtimes   NUM     Run the test NUM times, NUM >= 2 (default 1000);");
     println!("                           the first run is excluded from statistics");
-    println!("      --block-size SIZE    Units per cube for every kernel (default {});", DEFAULT_BLOCK_SIZE);
-    println!("                           a multiple of the plane size, at most 32 planes");
+    println!(
+        "      --block-size SIZE    Pinned units per cube for every kernel; SIZE must be {}",
+        DEFAULT_BLOCK_SIZE
+    );
     println!("      --half               Use float16");
     println!("      --float              Use float32");
     println!("      --double             Use float64 (default)");
@@ -133,5 +135,8 @@ pub fn parse_arguments() -> Args {
         (false, true) => OutputMode::CsvRaw,
         (false, false) => OutputMode::Text,
     };
+    if args.block_size != DEFAULT_BLOCK_SIZE {
+        fail("the pinned configuration requires --block-size 256");
+    }
     args
 }

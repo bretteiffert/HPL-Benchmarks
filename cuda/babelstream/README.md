@@ -21,7 +21,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16; values decay below the fp16 range after a few hundred iterations, see the correctness notes
 
-Other options: `-s SIZE` elements per array (default 33,554,432), `-n NUM` iterations (default 1000, the first is warm-up), `--block-size N` (default 1024, a power of two), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes` (text report only). `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+Other options: `-s SIZE` elements per array (default 33,554,432), `-n NUM` iterations (default 1000, the first is warm-up), `--block-size 256` (the pinned value), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes` (text report only). `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
 `FMAD` is a build-time switch (`make EXTRA_FLAGS=-DFMAD=0`). nvcc contracts `a*b+c` into an FMA by default, so it is normally a no-op.
 

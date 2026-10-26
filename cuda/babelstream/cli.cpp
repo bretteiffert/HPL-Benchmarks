@@ -101,6 +101,8 @@ Options parse_cli(int argc, char* argv[])
 
   if (csv && csv_raw)
     throw CliError("--csv and --csv-raw cannot be used together");
+  if (o.block_size != 256)
+    throw CliError("the pinned configuration requires --block-size 256");
   if (csv) o.output = OutputMode::Csv;
   if (csv_raw) o.output = OutputMode::CsvRaw;
 
@@ -122,8 +124,8 @@ std::string help_text(const char* program)
     << "      --float            float32\n"
     << "      --half             float16 (values decay below the fp16 range after\n"
     << "                         a few hundred iterations; see the correctness notes)\n"
-    << "      --block-size N     threads per block, a power of two up to 1024 and the\n"
-    << "                         device limit; SIZE must be a multiple of it (default 1024)\n"
+    << "      --block-size N     pinned threads per block; N must be 256 and SIZE must\n"
+    << "                         be a multiple of it (default 256)\n"
     << "      --device INDEX     device to run on; the energy profiler uses the same\n"
     << "                         index (default 0)\n"
     << "      --list             list devices (index: name) and exit\n"

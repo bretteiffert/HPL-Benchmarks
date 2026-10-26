@@ -4,7 +4,7 @@
 # The kernels use `unsafe_indices = true`, so there is no bounds check: the
 # streaming kernels must be launched with ndrange a multiple of the workgroup
 # size (validated in main.jl), and dot_kernel! must be launched with a
-# workgroup of exactly 1024 (its tree reduction starts at offset 512).
+# workgroup of exactly 256 (its tree reduction starts at offset 128).
 
 module Kernels
 
@@ -13,8 +13,8 @@ using KernelAbstractions
 export init_kernel!, copy_kernel!, mul_kernel!, add_kernel!, triad_kernel!,
        dot_kernel!, DOT_BLOCK
 
-"Workgroup size dot_kernel! is written for (1024-slot local memory, offset 512)."
-const DOT_BLOCK = 1024
+"Pinned workgroup size used by every kernel."
+const DOT_BLOCK = 256
 
 @kernel unsafe_indices = true function init_kernel!(a, b, c, initA, initB, initC)
     I = @index(Global)
@@ -47,7 +47,7 @@ end
 
 @kernel unsafe_indices = true function dot_kernel!(@Const(a), @Const(b), partial, array_size, num_blocks)
     T = eltype(partial)
-    tb_sum = @localmem T (1024,)
+    tb_sum = @localmem T (256,)
 
     local_i = @index(Local)
     group_i = @index(Group)
@@ -55,13 +55,13 @@ end
     @inbounds tb_sum[local_i] = zero(T)
 
     i = @index(Global)
-    stride = 1024 * num_blocks
+    stride = 256 * num_blocks
     while i <= array_size
         @inbounds tb_sum[local_i] = tb_sum[local_i] + a[i] * b[i]
         i += stride
     end
 
-    offset = 512
+    offset = 128
     while offset > 0
         @synchronize
         if local_i <= offset

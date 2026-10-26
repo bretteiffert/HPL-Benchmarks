@@ -24,7 +24,7 @@ struct Args(Copyable):
         self.array_size = 33554432
         self.num_times = 1000
         self.device_index = 0
-        self.block_size = 1024
+        self.block_size = 256
         self.precision = "float64"
         self.mibibytes = False
         self.csv = False
@@ -49,9 +49,8 @@ Options:
   -n, --numtimes NUM       Iterations, NUM >= 2; the first is a warm-up and is
                            excluded from statistics, CSV and energy
                            (default: 1000)
-      --block-size SIZE    Threads per block: 32, 64, 128, 256, 512 or 1024,
-                           at most the device limit and a multiple of the warp
-                           size (default: 1024)
+      --block-size SIZE    Pinned threads per block; SIZE must be 256
+                           (default: 256)
       --double             float64 (default)
       --float              float32
       --half               float16
@@ -138,4 +137,6 @@ def parse_arguments() raises -> Args:
         i += 1
     if args.csv and args.csv_raw:
         raise Error("--csv and --csv-raw are mutually exclusive")
+    if args.block_size != 256:
+        raise Error("the pinned configuration requires --block-size 256")
     return args^

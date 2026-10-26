@@ -261,7 +261,7 @@ impl<F: Elem> CubeStream<F> {
 
     /// Times the dot kernel plus the read-back of the per-group partial sums,
     /// then finishes the reduction on the host. Returns (seconds, dot product).
-    fn launch_dot(&self, buf: &Buffers) -> (f64, F) {
+    fn launch_dot(&self, buf: &Buffers) -> (f64, f64) {
         let (a, b, sum, n) = (buf.a.clone(), buf.b.clone(), buf.sum.clone(), buf.n);
         let (dim, use_fma) = (self.cube_dim(), self.use_fma);
         let groups = self.dot_groups;
@@ -284,7 +284,8 @@ impl<F: Elem> CubeStream<F> {
         let total = partials
             .iter()
             .take(groups as usize)
-            .fold(F::from_f64(0.0), |acc, &p| acc.h_add(p));
+            .map(|&p| p.to_host_f64())
+            .sum::<f64>();
         (t, total)
     }
 
@@ -303,7 +304,7 @@ impl<F: Elem> CubeStream<F> {
     pub fn triad(&self) -> f64 {
         self.launch_triad(&self.main)
     }
-    pub fn dot(&self) -> (f64, F) {
+    pub fn dot(&self) -> (f64, f64) {
         self.launch_dot(&self.main)
     }
 

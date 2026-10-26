@@ -25,11 +25,6 @@ use report::{ArrayCheck, Correctness, EnergyReport, Meta, Routine, RunReport};
 use std::time::Instant;
 use stream::{CubeStream, Elem, START_A, START_B, START_C, START_SCALAR};
 
-/// Shared memory in `dot_kernel` holds one partial per plane.
-const DOT_MAX_PLANES: u32 = 32;
-/// SM/CU count assumed when the device does not report one.
-const FALLBACK_COMPUTE_UNITS: u32 = 64;
-
 fn fail(msg: &str) -> ! {
     eprintln!("error: {}", msg);
     std::process::exit(1);
@@ -49,26 +44,12 @@ fn list_devices() {
 }
 
 /// Checks the block size against the device and the dot kernel's limits.
-fn validate_block_size(args: &Args, plane_size: u32, max_units: u32) {
+fn validate_block_size(args: &Args, max_units: u32) {
     let bs = args.block_size;
     if bs > max_units {
         fail(&format!(
             "--block-size {} exceeds the device limit of {} units per cube",
             bs, max_units
-        ));
-    }
-    if plane_size > 0 && bs % plane_size != 0 {
-        fail(&format!(
-            "--block-size {} must be a multiple of the plane size ({})",
-            bs, plane_size
-        ));
-    }
-    if plane_size > 0 && bs / plane_size > DOT_MAX_PLANES {
-        fail(&format!(
-            "--block-size {} gives {} planes per cube; the dot kernel supports at most {}",
-            bs,
-            bs / plane_size,
-            DOT_MAX_PLANES
         ));
     }
     if args.array_size % bs != 0 {
@@ -79,19 +60,16 @@ fn validate_block_size(args: &Args, plane_size: u32, max_units: u32) {
     }
 }
 
-/// Dot grid = 4 × compute units. Returns (groups, description, optional warning).
-fn dot_groups(compute_units: Option<u32>) -> (u32, String, Option<String>) {
+/// Dot grid = 4 × compute units. Missing hardware metadata is a hard error in
+/// the pinned configuration.
+fn dot_groups(compute_units: Option<u32>) -> (u32, String) {
     if let Some(n) = compute_units.filter(|&n| n > 0) {
-        return (n * 4, format!("4 × {} {}", n, COMPUTE_UNIT_LABEL), None);
+        return (n * 4, format!("4 × {} {}", n, COMPUTE_UNIT_LABEL));
     }
-    (
-        FALLBACK_COMPUTE_UNITS * 4,
-        format!("4 × {} {}, fallback", FALLBACK_COMPUTE_UNITS, COMPUTE_UNIT_LABEL),
-        Some(format!(
-            "{} count unavailable from the device; using {}, so Dot bandwidth may be off",
-            COMPUTE_UNIT_LABEL, FALLBACK_COMPUTE_UNITS
-        )),
-    )
+    fail(&format!(
+        "{} count unavailable; the pinned Dot configuration requires 4 × SM/CU groups",
+        COMPUTE_UNIT_LABEL
+    ))
 }
 
 fn kahan_sum<F: Elem>(v: &[F]) -> f64 {
@@ -134,7 +112,7 @@ fn check_solution<F: Elem>(
     a: &[F],
     b: &[F],
     c: &[F],
-    dot_sum: F,
+    dot_sum: f64,
     array_size: u32,
 ) -> Correctness {
     let mut gold_a = F::from_f64(START_A);
@@ -154,7 +132,7 @@ fn check_solution<F: Elem>(
     let (chk_c, max_c) = metrics(c, gold_c);
 
     let expected_dot = gold_a.to_host_f64() * gold_b.to_host_f64() * array_size as f64;
-    let actual_dot = dot_sum.to_host_f64();
+    let actual_dot = dot_sum;
     let product_magnitude = (gold_a.to_host_f64() * gold_b.to_host_f64()).abs();
     let dot_err = if expected_dot != 0.0 {
         (actual_dot - expected_dot).abs() / expected_dot.abs()
@@ -198,10 +176,10 @@ fn run<F: Elem>(args: &Args, use_fma: bool) {
     if !props.supports_type(F::elem_type_native()) {
         fail(&format!("{} is not supported on this device", F::PRECISION));
     }
-    validate_block_size(args, hw.plane_size_min, hw.max_units_per_cube);
+    validate_block_size(args, hw.max_units_per_cube);
 
     let (device, name_note) = backend::resolve_name(args.device_index, &client);
-    let (groups, groups_detail, groups_note) = dot_groups(hw.num_streaming_multiprocessors);
+    let (groups, groups_detail) = dot_groups(hw.num_streaming_multiprocessors);
 
     let meta = Meta {
         backend: BACKEND_LABEL,
@@ -223,7 +201,7 @@ fn run<F: Elem>(args: &Args, use_fma: bool) {
         },
         energy_enabled: args.energy,
         mibibytes: args.mibibytes,
-        notes: name_note.into_iter().chain(groups_note).collect(),
+        notes: name_note.into_iter().collect(),
     };
     report::emit_header(&meta, args.output);
 
@@ -254,7 +232,7 @@ fn run<F: Elem>(args: &Args, use_fma: bool) {
         None
     };
     let mut measured_started: Option<Instant> = None;
-    let mut dot_sum = F::from_f64(0.0);
+    let mut dot_sum = 0.0f64;
 
     for iteration in 0..args.num_times {
         // BabelStream excludes iteration zero from summary statistics. Keep it as

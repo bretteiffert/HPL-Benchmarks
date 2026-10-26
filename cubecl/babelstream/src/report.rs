@@ -208,6 +208,7 @@ fn write_header(m: &Meta, out: &mut dyn Write) -> io::Result<()> {
         ),
     )?;
     kv(out, "Block size", m.block_size)?;
+    kv(out, "Dot group size", m.block_size)?;
     kv(out, "Dot groups", format!("{} ({})", m.dot_groups, m.dot_groups_detail))?;
     kv(
         out,
@@ -377,7 +378,7 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     let m = &r.meta;
     writeln!(
         out,
-        "implementation,backend,device,precision,array_size,block_size,dot_groups,num_times,\
+        "implementation,backend,device,precision,array_size,block_size,dot_group_size,dot_groups,num_times,\
          routine,bw_gbs,min_s,max_s,avg_s,energy_j_per_iter,avg_power_w"
     )?;
     let prefix = csv_prefix(m);
@@ -389,8 +390,9 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     let t = r.init.min();
     writeln!(
         out,
-        "{},{},{},{},{:.4},{:.9},,,,",
+        "{},{},{},{},{},{:.4},{:.9},,,,",
         prefix,
+        m.block_size,
         m.dot_groups,
         m.num_times,
         r.init.name,
@@ -401,8 +403,9 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
         let tmin = k.min();
         writeln!(
             out,
-            "{},{},{},{},{:.4},{:.9},{:.9},{:.9},{},{}",
+            "{},{},{},{},{},{:.4},{:.9},{:.9},{:.9},{},{}",
             prefix,
+            m.block_size,
             m.dot_groups,
             m.num_times,
             k.name,
@@ -420,7 +423,7 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
 fn write_csv_raw(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     writeln!(
         out,
-        "implementation,backend,device,precision,array_size,block_size,routine,iteration,time_s,bw_gbs"
+        "implementation,backend,device,precision,array_size,block_size,dot_group_size,dot_groups,routine,iteration,time_s,bw_gbs"
     )?;
     let prefix = csv_prefix(&r.meta);
     for k in &r.routines {
@@ -428,8 +431,10 @@ fn write_csv_raw(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
             // Iteration 0 is the unmeasured warm-up, so measured ones start at 1.
             writeln!(
                 out,
-                "{},{},{},{:.9},{:.4}",
+                "{},{},{},{},{},{:.9},{:.4}",
                 prefix,
+                r.meta.block_size,
+                r.meta.dot_groups,
                 k.name,
                 i + 1,
                 t,

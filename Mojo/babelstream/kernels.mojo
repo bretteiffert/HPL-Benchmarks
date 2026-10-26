@@ -6,7 +6,7 @@
 #     module-level `comptime dtype` (the precision is picked by --double /
 #     --float / --half at run time, so each precision is its own instantiation);
 #   * dot_kernel takes the block size `tbsize` as a compile-time parameter
-#     instead of the module-level `TBSIZE = 1024` (the shared reduction array
+#     instead of the module-level `TBSIZE = 256` (the shared reduction array
 #     needs a compile-time length; --block-size picks an instantiation).
 # Mojo 1.2: the GPU index builtins are imported from max.gpu (std.gpu became
 # private in 1.1).

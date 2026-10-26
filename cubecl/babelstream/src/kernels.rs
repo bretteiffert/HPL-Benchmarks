@@ -63,10 +63,7 @@ pub fn triad_kernel<F: Float + LaunchArg>(
     a[i] = mad_op::<F>(scalar, c[i], b[i], use_fma);
 }
 
-/// Grid-stride dot product. Each cube reduces its partial sum through planes
-/// into `partial[CUBE_POS]`. Shared memory holds one value per plane, so the
-/// block size must be a multiple of the plane size and at most 32 planes wide
-/// (both are checked on the host before launch).
+/// Pinned 256-unit grid-stride dot product with a shared-memory tree reduction.
 #[cube(launch_unchecked)]
 pub fn dot_kernel<F: Float>(
     a: &[F],
@@ -85,25 +82,21 @@ pub fn dot_kernel<F: Float>(
         i += stride;
     }
 
-    let mut shared = Shared::<[F]>::new_slice(32usize);
-
-    let plane_total = plane_sum(acc);
-    let plane_id = UNIT_POS / PLANE_DIM;
-
-    if UNIT_POS % PLANE_DIM == 0 {
-        shared[plane_id as usize] = plane_total;
-    }
-
+    let mut shared = Shared::<[F]>::new_slice(256usize);
+    shared[UNIT_POS as usize] = acc;
     sync_cube();
 
-    if UNIT_POS == 0 {
-        let num_planes = CUBE_DIM / PLANE_DIM;
-        let mut total = F::new(0.0f32);
-        let mut p = 0u32;
-        while p < num_planes {
-            total += shared[p as usize];
-            p += 1;
+    let mut offset = 128u32;
+    while offset > 0 {
+        if UNIT_POS < offset {
+            shared[UNIT_POS as usize] =
+                shared[UNIT_POS as usize] + shared[(UNIT_POS + offset) as usize];
         }
-        partial[CUBE_POS] = total;
+        sync_cube();
+        offset /= 2;
+    }
+
+    if UNIT_POS == 0 {
+        partial[CUBE_POS] = shared[0];
     }
 }

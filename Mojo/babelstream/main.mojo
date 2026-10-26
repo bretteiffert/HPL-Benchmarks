@@ -86,6 +86,11 @@ def run_bs[dtype: DType, tbsize: Int](args: Args) raises:
     # ---- device ------------------------------------------------------------
     var ctx = open_device(args.device_index)
     var info = query_device(ctx, args.device_index)
+    if not info.sm_known:
+        raise Error(
+            compute_unit_label()
+            + " count is unavailable; the pinned Dot configuration requires 4 × SM/CU groups"
+        )
 
     # ---- validation before allocating or launching -------------------------
     if info.max_threads_per_block > 0 and tbsize > info.max_threads_per_block:
@@ -149,11 +154,6 @@ def run_bs[dtype: DType, tbsize: Int](args: Args) raises:
     rep.mibibytes = args.mibibytes
     for i in range(len(info.notes)):
         rep.header_notes.append(info.notes[i])
-    if not info.sm_known:
-        rep.header_notes.append(
-            compute_unit_label()
-            + " count unavailable from the device; dot uses 4 × 64 groups"
-        )
     rep.header_notes.append(
         "Dot time includes copying the partial sums to the host"
     )
@@ -185,7 +185,7 @@ def run_bs[dtype: DType, tbsize: Int](args: Args) raises:
     bench.init_arrays()
     rep.rows[0].times.append(bench.get_time_taken())
 
-    var dot_sum = Scalar[dtype](0)
+    var dot_sum = Float64(0)
     var t_start = Float64(0)
     for it in range(args.num_times):
         # Iteration 0 is the warm-up: excluded from stats, CSV and energy.
@@ -316,28 +316,7 @@ def run_bs[dtype: DType, tbsize: Int](args: Args) raises:
 
 
 def run[dtype: DType](args: Args) raises:
-    # The dot reduction's shared array length is a compile-time parameter
-    # and the reduction halves from tbsize // 2, so only powers of two.
-    var bs = args.block_size
-    if bs == 1024:
-        run_bs[dtype, 1024](args)
-    elif bs == 512:
-        run_bs[dtype, 512](args)
-    elif bs == 256:
-        run_bs[dtype, 256](args)
-    elif bs == 128:
-        run_bs[dtype, 128](args)
-    elif bs == 64:
-        run_bs[dtype, 64](args)
-    elif bs == 32:
-        run_bs[dtype, 32](args)
-    else:
-        raise Error(
-            "block size "
-            + String(bs)
-            + " not supported; use 32, 64, 128, 256, 512 or 1024 (the dot"
-            " reduction needs a power of two)"
-        )
+    run_bs[dtype, 256](args)
 
 
 def run_main() raises:

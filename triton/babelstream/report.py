@@ -19,7 +19,7 @@ class Report:
         self.array_size = 0
         self.block_size = 0
         self.dot_groups = 0
-        self.dot_groups_detail = ""  # "(4 × 108 SMs)" or fallback text
+        self.dot_groups_detail = ""  # e.g. "(4 × 108 SMs)"
         self.num_times = 0
         self.fmad = "unset"
         self.timing = "device timestamps"
@@ -91,6 +91,7 @@ def text_header(r):
         _key("Array size", "%s elements (%.1f %s per array, %.1f %s total)"
              % (count(r.array_size), per_array, unit, 3 * per_array, unit)),
         _key("Block size", count(r.block_size)),
+        _key("Dot group size", count(r.block_size)),
         _key("Dot groups", "%s %s" % (count(r.dot_groups), r.dot_groups_detail)),
         _key("Iterations", "%s (first excluded from statistics)" % count(r.num_times)),
         _key("FMAD", r.fmad),
@@ -167,9 +168,10 @@ def _prefix(r):
 
 
 def csv_summary(r):
-    lines = [_PREFIX + ",array_size,block_size,dot_groups,num_times,routine,bw_gbs,"
+    lines = [_PREFIX + ",array_size,block_size,dot_group_size,dot_groups,num_times,routine,bw_gbs,"
              "min_s,max_s,avg_s,energy_j_per_iter,avg_power_w"]
-    head = "%s,%d,%d,%d,%d" % (_prefix(r), r.array_size, r.block_size, r.dot_groups, r.num_times)
+    head = "%s,%d,%d,%d,%d,%d" % (_prefix(r), r.array_size, r.block_size,
+                                     r.block_size, r.dot_groups, r.num_times)
     t = r.init_time
     lines.append("%s,Init,%.4f,%.9f,,,," % (head, _bandwidth(r.bytes_moved("Init"), t, False), t))
     if r.energy is not None:
@@ -185,8 +187,9 @@ def csv_summary(r):
 
 
 def csv_raw(r):
-    lines = [_PREFIX + ",array_size,block_size,routine,iteration,time_s,bw_gbs"]
-    head = "%s,%d,%d" % (_prefix(r), r.array_size, r.block_size)
+    lines = [_PREFIX + ",array_size,block_size,dot_group_size,dot_groups,routine,iteration,time_s,bw_gbs"]
+    head = "%s,%d,%d,%d,%d" % (_prefix(r), r.array_size, r.block_size,
+                                  r.block_size, r.dot_groups)
     t = r.init_time
     lines.append("%s,Init,1,%.9f,%.4f" % (head, t, _bandwidth(r.bytes_moved("Init"), t, False)))
     for routine in ROUTINES:

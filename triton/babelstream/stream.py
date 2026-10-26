@@ -23,11 +23,12 @@ class TritonStream:
     """Three device arrays plus the dot partial sums; each launch is timed with
     device events on the current stream."""
 
-    def __init__(self, array_size, block_size, dot_groups, device_index, dtype):
+    def __init__(self, array_size, block_size, dot_groups, device_index, dtype, num_warps):
         self.array_size = array_size
         self.block_size = block_size
         self.dot_groups = dot_groups
         self.dtype = dtype
+        self.num_warps = num_warps
         torch.cuda.set_device(device_index)
         self.device = torch.device("cuda", device_index)
 
@@ -70,12 +71,14 @@ class TritonStream:
         w_sum = torch.empty(self.dot_groups, dtype=self.dtype, device=self.device)
         bs = self.block_size
 
-        init_kernel[(1,)](w_a, w_b, w_c, self.d_init, BLOCK_SIZE=bs)
-        copy_kernel[(1,)](w_a, w_c, BLOCK_SIZE=bs)
-        mul_kernel[(1,)](w_b, w_c, self.d_scalar, BLOCK_SIZE=bs)
-        add_kernel[(1,)](w_a, w_b, w_c, BLOCK_SIZE=bs)
-        triad_kernel[(1,)](w_a, w_b, w_c, self.d_scalar, BLOCK_SIZE=bs)
-        dot_kernel[(self.dot_groups,)](w_a, w_b, w_sum, n, self.dot_groups, BLOCK_SIZE=bs)
+        nw = self.num_warps
+        init_kernel[(1,)](w_a, w_b, w_c, self.d_init, BLOCK_SIZE=bs, num_warps=nw)
+        copy_kernel[(1,)](w_a, w_c, BLOCK_SIZE=bs, num_warps=nw)
+        mul_kernel[(1,)](w_b, w_c, self.d_scalar, BLOCK_SIZE=bs, num_warps=nw)
+        add_kernel[(1,)](w_a, w_b, w_c, BLOCK_SIZE=bs, num_warps=nw)
+        triad_kernel[(1,)](w_a, w_b, w_c, self.d_scalar, BLOCK_SIZE=bs, num_warps=nw)
+        dot_kernel[(self.dot_groups,)](w_a, w_b, w_sum, n, self.dot_groups,
+                                       BLOCK_SIZE=bs, num_warps=nw)
         self.sums.copy_(w_sum)
         torch.cuda.synchronize()
 
@@ -86,30 +89,31 @@ class TritonStream:
     def init_arrays(self):
         self._start()
         init_kernel[self._grid()](self.d_a, self.d_b, self.d_c, self.d_init,
-                                  BLOCK_SIZE=self.block_size)
+                                  BLOCK_SIZE=self.block_size, num_warps=self.num_warps)
         return self._stop("Init")
 
     def copy(self):
         self._start()
-        copy_kernel[self._grid()](self.d_a, self.d_c, BLOCK_SIZE=self.block_size)
+        copy_kernel[self._grid()](self.d_a, self.d_c, BLOCK_SIZE=self.block_size,
+                                  num_warps=self.num_warps)
         return self._stop("Copy")
 
     def mul(self):
         self._start()
         mul_kernel[self._grid()](self.d_b, self.d_c, self.d_scalar,
-                                 BLOCK_SIZE=self.block_size)
+                                  BLOCK_SIZE=self.block_size, num_warps=self.num_warps)
         return self._stop("Mul")
 
     def add(self):
         self._start()
         add_kernel[self._grid()](self.d_a, self.d_b, self.d_c,
-                                 BLOCK_SIZE=self.block_size)
+                                  BLOCK_SIZE=self.block_size, num_warps=self.num_warps)
         return self._stop("Add")
 
     def triad(self):
         self._start()
         triad_kernel[self._grid()](self.d_a, self.d_b, self.d_c, self.d_scalar,
-                                   BLOCK_SIZE=self.block_size)
+                                    BLOCK_SIZE=self.block_size, num_warps=self.num_warps)
         return self._stop("Triad")
 
     def dot(self):
@@ -117,17 +121,17 @@ class TritonStream:
         partial sums to the host, as in the original."""
         self._start()
         dot_kernel[(self.dot_groups,)](self.d_a, self.d_b, self.d_sum,
-                                       self.array_size, self.dot_groups,
-                                       BLOCK_SIZE=self.block_size)
+                                        self.array_size, self.dot_groups,
+                                        BLOCK_SIZE=self.block_size, num_warps=self.num_warps)
         self.sums.copy_(self.d_sum)
         seconds = self._stop("Dot")
 
         partials = self.sums.numpy()
-        total = partials.dtype.type(0.0)
+        total = 0.0
         # Overflow to inf is reported as a correctness note, not a warning.
         with np.errstate(over="ignore", invalid="ignore"):
             for i in range(self.dot_groups):
-                total = total + partials[i]
+                total += float(partials[i])
         return seconds, total
 
     def read_arrays(self):

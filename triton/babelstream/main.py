@@ -10,15 +10,12 @@ import report
 
 INT32_MAX = 2 ** 31 - 1
 UINT32_MAX = 2 ** 32 - 1
-TRITON_NUM_WARPS = 4  # Triton's default launch (num_warps=4) on NVIDIA and AMD
-
-
 def fail(what, hint="--help"):
     print("error: %s (try '%s')" % (what, hint), file=sys.stderr)
     sys.exit(1)
 
 
-def validate(opts, be, props, dot_groups, max_block):
+def validate(opts, be, props, dot_groups, max_block, num_warps):
     bs = opts.block_size
     if bs & (bs - 1):
         fail("block size %s is not a power of two (Triton's tl.arange requires one)"
@@ -39,11 +36,11 @@ def validate(opts, be, props, dot_groups, max_block):
                 report.count(INT32_MAX + 1)))
     if be == backend.HIP:
         warp = int(getattr(props, "warp_size", 64) or 64)
-        work_items = (opts.array_size // bs) * TRITON_NUM_WARPS * warp
+        work_items = (opts.array_size // bs) * num_warps * warp
         if work_items > UINT32_MAX:
             fail("grid of %s programs x %d threads exceeds HIP's limit of %s work-items "
                  "per launch; use a larger --block-size"
-                 % (report.count(opts.array_size // bs), TRITON_NUM_WARPS * warp,
+                  % (report.count(opts.array_size // bs), num_warps * warp,
                     report.count(UINT32_MAX)))
 
 
@@ -96,21 +93,21 @@ def main(argv):
     r.energy_enabled = opts.energy
     r.mibibytes = opts.mibibytes
     r.header_notes = list(info.notes)
-    if info.compute_units:
-        r.dot_groups = 4 * info.compute_units
-        r.dot_groups_detail = "(4 × %s %s)" % (report.count(info.compute_units), info.unit_label)
-    else:
-        r.dot_groups = 64
-        r.dot_groups_detail = "(fallback)"
-        r.header_notes.append("%s count unavailable; dot uses 64 groups"
-                              % info.unit_label[:-1])
+    if not info.compute_units:
+        fail("compute-unit count is unavailable; the pinned Dot configuration requires 4 x SM/CU groups")
+    r.dot_groups = 4 * info.compute_units
+    r.dot_groups_detail = "(4 × %s %s)" % (report.count(info.compute_units), info.unit_label)
     fmad = os.environ.get("FMAD")
     r.fmad = fmad if fmad is not None else "unset"
     if fmad is not None:
         r.header_notes.append("FMAD has no effect; Triton fuses multiply-add by default "
                               "(TRITON_DEFAULT_FP_FUSION=0 turns that off)")
 
-    validate(opts, be, props, r.dot_groups, tl.TRITON_MAX_TENSOR_NUMEL)
+    warp = 32 if be == backend.CUDA else 64
+    num_warps = opts.block_size // warp
+    if num_warps not in (4, 8):
+        fail("the pinned 256-element Triton program requires 8 CUDA warps or 4 HIP waves")
+    validate(opts, be, props, r.dot_groups, tl.TRITON_MAX_TENSOR_NUMEL, num_warps)
 
     csv_mode = opts.csv or opts.csv_raw
     info_out = sys.stderr if csv_mode else sys.stdout
@@ -121,7 +118,7 @@ def main(argv):
              "float64": torch.float64}[opts.precision]
     try:
         s = stream_mod.TritonStream(opts.array_size, opts.block_size, r.dot_groups,
-                                    opts.device, dtype)
+                                    opts.device, dtype, num_warps)
     except torch.cuda.OutOfMemoryError:
         fail("not enough device memory for three arrays of %.1f MB"
              % (opts.array_size * r.itemsize * 1.0e-6))

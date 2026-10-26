@@ -319,6 +319,7 @@ def format_header(r: Report) -> String:
         + " total)",
     )
     s += _key("Block size", String(r.block_size))
+    s += _key("Dot group size", String(r.block_size))
     var groups = thousands(r.dot_groups) + " (4 × "
     if r.sm_known:
         groups += thousands(r.sm_count) + " " + r.sm_label + ")"
@@ -461,7 +462,7 @@ def _gbs(bytes: Int, seconds: Float64) -> String:
 def csv_header() -> String:
     return (
         CSV_PREFIX
-        + "array_size,block_size,dot_groups,num_times,routine,bw_gbs,"
+        + "array_size,block_size,dot_group_size,dot_groups,num_times,routine,bw_gbs,"
         + "min_s,max_s,avg_s,energy_j_per_iter,avg_power_w"
     )
 
@@ -472,7 +473,7 @@ def csv_rows(r: Report) -> String:
         ref row = r.rows[i]
         s += _prefix(r)
         s += String(r.array_size) + "," + String(r.block_size) + ","
-        s += String(r.dot_groups) + "," + String(r.num_times) + ","
+        s += String(r.block_size) + "," + String(r.dot_groups) + "," + String(r.num_times) + ","
         s += csv_field(row.routine) + ","
         s += _gbs(row.bytes, row.min_s) + ","
         s += fmt_fixed(row.min_s, 9) + ","
@@ -492,7 +493,7 @@ def csv_rows(r: Report) -> String:
 
 
 def csv_raw_header() -> String:
-    return CSV_PREFIX + "array_size,block_size,routine,iteration,time_s,bw_gbs"
+    return CSV_PREFIX + "array_size,block_size,dot_group_size,dot_groups,routine,iteration,time_s,bw_gbs"
 
 
 def csv_raw_rows(r: Report) -> String:
@@ -502,6 +503,7 @@ def csv_raw_rows(r: Report) -> String:
         for j in range(len(row.times)):
             s += _prefix(r)
             s += String(r.array_size) + "," + String(r.block_size) + ","
+            s += String(r.block_size) + "," + String(r.dot_groups) + ","
             s += csv_field(row.routine) + "," + String(j + 1) + ","
             s += fmt_fixed(row.times[j], 9) + ","
             s += _gbs(row.bytes, row.times[j]) + "\n"

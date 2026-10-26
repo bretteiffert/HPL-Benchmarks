@@ -141,12 +141,10 @@ void print_text_header(const Report& r, std::ostream& out)
                          size_string(array_bytes, r.mibibytes) + " per array, " +
                          size_string(3.0 * array_bytes, r.mibibytes) + " total)");
   key(out, "Block size", std::to_string(r.block_size));
+  key(out, "Dot group size", std::to_string(r.block_size));
 
-  if (r.compute_units > 0)
-    key(out, "Dot groups", std::to_string(r.dot_groups) + " (4 \xC3\x97 " +
-                           std::to_string(r.compute_units) + " " + r.compute_unit_label + ")");
-  else
-    key(out, "Dot groups", std::to_string(r.dot_groups) + " (fallback)");
+  key(out, "Dot groups", std::to_string(r.dot_groups) + " (4 \xC3\x97 " +
+                         std::to_string(r.compute_units) + " " + r.compute_unit_label + ")");
 
   key(out, "Iterations", format_thousands(r.num_times) + " (first excluded from statistics)");
   key(out, "FMAD", std::to_string(r.fmad));
@@ -254,14 +252,14 @@ void print_text_correctness(const Report& r, std::ostream& out)
 void print_csv(const Report& r, std::ostream& out, bool with_header)
 {
   if (with_header)
-    out << "implementation,backend,device,precision,array_size,block_size,dot_groups,num_times,"
+    out << "implementation,backend,device,precision,array_size,block_size,dot_group_size,dot_groups,num_times,"
            "routine,bw_gbs,min_s,max_s,avg_s,energy_j_per_iter,avg_power_w\n";
 
   const std::string prefix = csv_prefix(r);
   for (const auto& rt : r.routines)
   {
     const double mn = rt.min_s();
-    out << prefix << r.array_size << "," << r.block_size << "," << r.dot_groups << ","
+    out << prefix << r.array_size << "," << r.block_size << "," << r.block_size << "," << r.dot_groups << ","
         << r.num_times << "," << csv_field(rt.name) << ","
         << format_fixed(1.0E-9 * rt.bytes / mn, 4) << ","
         << format_fixed(mn, 9) << ",";
@@ -283,14 +281,15 @@ void print_csv(const Report& r, std::ostream& out, bool with_header)
 void print_csv_raw(const Report& r, std::ostream& out, bool with_header)
 {
   if (with_header)
-    out << "implementation,backend,device,precision,array_size,block_size,routine,iteration,time_s,bw_gbs\n";
+    out << "implementation,backend,device,precision,array_size,block_size,dot_group_size,dot_groups,routine,iteration,time_s,bw_gbs\n";
 
   const std::string prefix = csv_prefix(r);
   for (const auto& rt : r.routines)
   {
     for (std::size_t j = 0; j < rt.times.size(); j++)
     {
-      out << prefix << r.array_size << "," << r.block_size << "," << csv_field(rt.name) << ","
+      out << prefix << r.array_size << "," << r.block_size << "," << r.block_size << ","
+          << r.dot_groups << "," << csv_field(rt.name) << ","
           << (j + 1) << "," << format_fixed(rt.times[j], 9) << ","
           << format_fixed(1.0E-9 * rt.bytes / rt.times[j], 4) << "\n";
     }

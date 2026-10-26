@@ -104,9 +104,8 @@ function print_header(io::IO, r::Report)
     per = r.elem_bytes * r.array_size
     kv(io, "Array size", "$(thousands(r.array_size)) elements ($(size_str(r, per)) per array, " *
                          "$(size_str(r, 3per)) total)")
-    bs = r.block_size == r.dot_block ? string(r.block_size) :
-         "$(r.block_size) (Dot uses $(r.dot_block))"
-    kv(io, "Block size", bs)
+    kv(io, "Block size", r.block_size)
+    kv(io, "Dot group size", r.dot_block)
     kv(io, "Dot groups", r.dot_groups_desc)
     kv(io, "Iterations", "$(r.num_times) (first excluded from statistics)")
     kv(io, "Timing", r.timing)
@@ -190,11 +189,11 @@ end
 prefix(r::Report) = join((IMPLEMENTATION, csv_field(r.backend), csv_field(r.device),
                           r.precision), ",")
 
-const CSV_HEADER = "implementation,backend,device,precision,array_size,block_size,dot_groups," *
+const CSV_HEADER = "implementation,backend,device,precision,array_size,block_size,dot_group_size,dot_groups," *
                    "num_times,routine,bw_gbs,min_s,max_s,avg_s,energy_j_per_iter,avg_power_w"
 
 const CSV_RAW_HEADER = "implementation,backend,device,precision,array_size,block_size," *
-                       "routine,iteration,time_s,bw_gbs"
+                       "dot_group_size,dot_groups,routine,iteration,time_s,bw_gbs"
 
 f9(x) = fixed(x, 9)
 f4(x) = fixed(x, 4)
@@ -207,7 +206,7 @@ function print_csv(io::IO, r::Report)
         # Energy covers the timed iterations; the one-shot Init is outside it.
         ej, ew = (e === nothing || rt.one_shot) ? ("", "") :
                  (fixed(joules_per_iter(e), 6), fixed(e.avg_power_w, 2))
-        println(io, join((prefix(r), r.array_size, r.block_size, r.dot_groups, r.num_times,
+        println(io, join((prefix(r), r.array_size, r.block_size, r.dot_block, r.dot_groups, r.num_times,
                           rt.name, f4(bw_gbs(rt.bytes, tmin)), f9(tmin),
                           rt.one_shot ? "" : f9(tmax), rt.one_shot ? "" : f9(tavg),
                           ej, ew), ","))
@@ -219,7 +218,7 @@ function print_csv_raw(io::IO, r::Report)
     for rt in r.routines
         rt.one_shot && continue
         for (k, t) in enumerate(rt.times)
-            println(io, join((prefix(r), r.array_size, r.block_size, rt.name, k,
+            println(io, join((prefix(r), r.array_size, r.block_size, r.dot_block, r.dot_groups, rt.name, k,
                               f9(t), f4(bw_gbs(rt.bytes, t))), ","))
         end
     end

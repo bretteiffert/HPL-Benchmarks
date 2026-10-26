@@ -18,7 +18,7 @@
 
 #define IMPLEMENTATION_STRING "CUDA"
 
-#define TBSIZE 1024
+#define TBSIZE 256
 
 #ifndef FMAD
 #define FMAD 1

@@ -113,7 +113,7 @@ std::unique_ptr<Stream> make_stream(Precision p, const StreamConfig& cfg);
 
 // Shared-memory slots in the Dot reduction (TBSIZE in kernels.cuh): the
 // largest block size the reduction can use.
-constexpr int kMaxBlockSize = 1024;
+constexpr int kMaxBlockSize = 256;
 
 // Value of the FMAD build setting compiled into the kernels.
 int fmad_setting();

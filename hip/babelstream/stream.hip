@@ -224,12 +224,12 @@ double HIPStream<T>::dot()
 
   const double seconds = record_stop("Dot");
 
-  T sum = HostOps<T>::from_double(0.0);
+  double sum = 0.0;
   for (int i = 0; i < dot_num_blocks; i++)
   {
-    sum = HostOps<T>::add(sum, sums[i]);
+    sum += HostOps<T>::to_double(sums[i]);
   }
-  last_dot_ = HostOps<T>::to_double(sum);
+  last_dot_ = sum;
 
   return seconds;
 }

@@ -28,7 +28,7 @@ Other options:
 ```bash
 -s, --arraysize SIZE   # elements per array (default 33554432), a multiple of the block size
 -n, --numtimes NUM     # iterations (default 1000), the first is excluded from statistics
---block-size SIZE      # units per cube for every kernel (default 1024)
+--block-size 256       # pinned units per cube for every kernel
 --device INDEX         # device to run on (default 0); --list shows them
 --csv                  # CSV to stdout: one summary row per routine
 --csv-raw              # CSV to stdout: one row per routine per measured iteration

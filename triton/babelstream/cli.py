@@ -2,7 +2,7 @@
 
 DEFAULT_ARRAY_SIZE = 33554432
 DEFAULT_NUM_TIMES = 1000
-DEFAULT_BLOCK_SIZE = 1024
+DEFAULT_BLOCK_SIZE = 256
 
 
 class UsageError(Exception):
@@ -80,6 +80,8 @@ def parse(argv):
 
     if opts.csv and opts.csv_raw:
         raise UsageError("--csv and --csv-raw cannot be used together")
+    if opts.block_size != DEFAULT_BLOCK_SIZE:
+        raise UsageError("the pinned configuration requires --block-size 256")
     return opts
 
 

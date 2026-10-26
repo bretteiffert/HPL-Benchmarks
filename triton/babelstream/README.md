@@ -24,7 +24,7 @@ Precision is selected at run time with a flag:
 --half     # fp16
 ```
 
-Other options: `-s` array size (33,554,432), `-n` iterations (1000, the first is warm-up), `--block-size` (1024, a power of two), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver. `FMAD` is reported but has no effect: Triton fuses multiply-add by default.
+Other options: `-s` array size (33,554,432), `-n` iterations (1000, the first is warm-up), `--block-size 256` (the pinned value), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver. `FMAD` is reported but has no effect: Triton fuses multiply-add by default.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

@@ -195,7 +195,7 @@ struct MojoStream[dtype: DType, tbsize: Int]:
         var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = _seconds(ns, "Triad")
 
-    def dot(mut self) raises -> Scalar[Self.dtype]:
+    def dot(mut self) raises -> Float64:
         var n = self.array_size
         var nb = self.dot_num_blocks
         var d_a = self.d_a
@@ -222,9 +222,9 @@ struct MojoStream[dtype: DType, tbsize: Int]:
         var ns = self.ctx.execution_time(body, 1)
         self.last_kernel_time = _seconds(ns, "Dot")
 
-        var total = Scalar[Self.dtype](0)
+        var total = Float64(0)
         for i in range(nb):
-            total += self.sums[i]
+            total += Float64(self.sums[i])
         return total
 
     def read_arrays(
@@ -375,7 +375,7 @@ def check_solution[
     a: List[Scalar[dtype]],
     b: List[Scalar[dtype]],
     c: List[Scalar[dtype]],
-    dot_sum: Scalar[dtype],
+    dot_sum: Float64,
     array_size: Int,
 ) -> CheckResult:
     # Gold arithmetic runs in the benchmark precision, as in the original.
@@ -387,7 +387,7 @@ def check_solution[
     metrics(c, array_size, Scalar[dtype](gold.c), r.chk_c, r.max_c)
 
     r.expected_dot = gold.a * gold.b * Float64(array_size)
-    r.actual_dot = Float64(dot_sum)
+    r.actual_dot = dot_sum
     if r.expected_dot != 0.0:
         r.dot_err = abs(r.actual_dot - r.expected_dot) / abs(r.expected_dot)
     else:
