@@ -18,12 +18,12 @@ class Options:
         self.warmup = DEFAULT_WARMUP
         self.nposes = 0
         self.ppwis = [PPWIS[0]]
-        self.wgsizes = []            # empty: one warp
+        self.wgsizes = [256]
         self.deck = None             # None: DEFAULT_DECK next to the script
         self.output = ""
         self.rows = DEFAULT_ROWS
         self.device = ""             # index or name substring
-        self.precision = "float64"
+        self.precision = "float32"
         self.csv = False
         self.csv_raw = False
         self.energy = True
@@ -125,6 +125,10 @@ def parse(argv):
     # Keep order, drop repeats.
     opts.ppwis = list(dict.fromkeys(opts.ppwis))
     opts.wgsizes = list(dict.fromkeys(opts.wgsizes))
+    if opts.ppwis != [1]:
+        raise UsageError("the pinned configuration requires --ppwi 1")
+    if opts.wgsizes != [256]:
+        raise UsageError("the pinned configuration requires --wgsize 256")
     return opts
 
 
@@ -138,15 +142,13 @@ Options:
   -i, --iter I           timed iterations (default %d)
       --warmup N         untimed warm-up iterations before them (default %d)
   -n, --poses N          compute only the first N poses; 0 for every pose in the deck (default 0)
-  -p, --ppwi LIST        comma-separated poses per work-item, or 'all' (default %d; available %s)
-  -w, --wgsize LIST      comma-separated work-group sizes (default: one warp). Each must be a
-                         power-of-two multiple of the warp size, since num_warps = wgsize / warp
-                         size; the reference default of 1 is not expressible in Triton
+  -p, --ppwi N           pinned poses per work-item; N must be 1 (default 1)
+  -w, --wgsize N         pinned work-group size; N must be 256 (default 256)
       --deck DIR         input deck (default %s, next to this script)
   -o, --out PATH         save the first configuration's energies to PATH
   -r, --rows N           show the first N energies in the report (default %d)
-      --double           float64 (default)
-      --float            float32, checked against one untimed float64 pass
+      --float            float32 (default), checked against one untimed float64 pass
+      --double           optional float64 run
       --csv              summary CSV on stdout, one row per configuration (report on stderr)
       --csv-raw          one CSV row per timed iteration on stdout (report on stderr)
       --no-energy        skip board-power measurement (default: measured)
@@ -155,8 +157,7 @@ Options:
   -l, --list             list devices (index: name) and exit
   -h, --help             show this help and exit
 
-Every (ppwi, wgsize) combination runs in one invocation; combinations that do not
-divide the pose count or do not fit the device are skipped with a note.
+The pose count must be a multiple of the pinned 256 poses per work-group.
 The last precision flag wins. Options take the form '--flag value'.
 
 Environment (all optional):

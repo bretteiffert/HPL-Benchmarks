@@ -158,6 +158,7 @@ void print_text_header(const Report& r, std::ostream& out)
                     " in the deck)");
   key(out, "PPWI", join(r.ppwis, ", "));
   key(out, "WG size", join(r.wgsizes, ", "));
+  key(out, "Groups", format_thousands((long long)(r.nposes / (r.ppwis[0] * r.wgsizes[0]))));
   key(out, "Iterations", format_thousands((long long)r.iterations) + " (after " +
                          format_thousands((long long)r.warmup) + " warm-up)");
   key(out, "Reference", r.reference);
@@ -172,7 +173,7 @@ void print_text_header(const Report& r, std::ostream& out)
 
 void print_text_best(const Report& r, std::ostream& out)
 {
-  if (r.results.empty()) return;
+  if (r.results.size() < 2) return;
   const auto& b = r.results[r.best];
   out << "  note: best: ppwi " << b.sample.ppwi << ", wgsize " << b.sample.wgsize << " (lowest avg, "
       << format_fixed(b.avg_s, 8) << " s)\n" << std::flush;
@@ -343,14 +344,15 @@ void print_text_correctness(const Report& r, std::ostream& out)
 void print_csv(const Report& r, std::ostream& out, bool with_header)
 {
   if (with_header)
-    out << "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,iterations,"
+    out << "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iterations,"
            "min_s,max_s,avg_s,stddev_s,gflops,gfinsts,ginteractions,launch_overhead_s,context_s,"
            "energy_j_per_iter,avg_power_w,ref_l2_rel,ref_max_rel,ref_max_ulp,deck_l2_rel,deck_beyond_tol\n";
 
   const std::string prefix = csv_prefix(r);
   for (const auto& c : r.results)
   {
-    out << prefix << c.sample.ppwi << "," << c.sample.wgsize << "," << r.iterations << ","
+    out << prefix << c.sample.ppwi << "," << c.sample.wgsize << ","
+        << r.nposes / (c.sample.ppwi * c.sample.wgsize) << "," << r.warmup << "," << r.iterations << ","
         << format_fixed(c.min_s, 9) << "," << format_fixed(c.max_s, 9) << "," << format_fixed(c.avg_s, 9) << ","
         << format_fixed(c.stddev_s, 9) << ","
         << format_fixed(c.gflops, 4) << "," << format_fixed(c.gfinsts, 4) << "," << format_fixed(c.ginteractions, 4) << ","
@@ -372,11 +374,12 @@ void print_csv(const Report& r, std::ostream& out, bool with_header)
 void print_csv_raw(const Report& r, std::ostream& out, bool with_header)
 {
   if (with_header)
-    out << "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,iteration,time_s\n";
+    out << "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iteration,time_s\n";
   const std::string prefix = csv_prefix(r);
   for (const auto& c : r.results)
     for (std::size_t j = 0; j < c.sample.kernel_s.size(); j++)
-      out << prefix << c.sample.ppwi << "," << c.sample.wgsize << "," << (j + 1) << ","
+      out << prefix << c.sample.ppwi << "," << c.sample.wgsize << ","
+          << r.nposes / (c.sample.ppwi * c.sample.wgsize) << "," << r.warmup << "," << (j + 1) << ","
           << format_fixed(c.sample.kernel_s[j], 9) << "\n";
   out << std::flush;
 }

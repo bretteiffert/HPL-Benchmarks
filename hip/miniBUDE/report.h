@@ -33,7 +33,7 @@ struct Report
   std::string backend;
   std::string device;
   std::string driver;
-  Precision precision = Precision::Double;
+  Precision precision = Precision::Float;
 
   std::string deck;                // deck name, e.g. "bm1"
   std::size_t natlig = 0, natpro = 0, ntypes = 0, nposes = 0, max_poses = 0;

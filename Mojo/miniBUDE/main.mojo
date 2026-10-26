@@ -1,5 +1,5 @@
 # miniBUDE (Mojo 1.2.0 / MAX 26.7): wiring, validation against device limits,
-# and the configuration sweep.
+# and the pinned configuration run.
 #
 # The backend is fixed at compile time:
 #     mojo run -D BACKEND=cuda main.mojo [args]
@@ -139,7 +139,7 @@ def run[dtype: DType](args: Args) raises:
             cfg_wg.append(wg)
     if len(cfg_ppwi) == 0:
         raise Error(
-            "no runnable configuration: no ppwi x wgsize divides the "
+            "no runnable configuration: the pinned 256 poses per work-group do not divide the "
             + String(n)
             + " poses"
         )
@@ -187,7 +187,7 @@ def run[dtype: DType](args: Args) raises:
             reference = ref_sample.energies.copy()
             has_reference = True
 
-    # ---- the sweep ---------------------------------------------------------
+    # ---- pinned benchmark run ----------------------------------------------
     for k in range(len(cfg_ppwi)):
         var sample = fasten_dispatch[dtype](
             ctx,

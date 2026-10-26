@@ -21,11 +21,11 @@ The input deck is read from `../../data/miniBUDE/bm1` (relative to this folder) 
 Precision is selected at run time with a flag:
 
 ```sh
---double   # fp64, the default
---float    # fp32, checked against one untimed fp64 pass
+--float    # fp32, the default; checked against one untimed fp64 pass
+--double   # optional fp64 mode
 ```
 
-Other options keep the upstream miniBUDE names: `-i` timed iterations (8), `--warmup` (2), `-n` poses (0 = whole deck), `-p` ppwi list or `all` (1), `-w` work-group size list (one warp; must be a power-of-two multiple of the warp size), `--deck`, `-o`, `-r`, `-d` device index or name substring. Every (ppwi, wgsize) combination runs in one invocation, and combinations that don't divide the pose count are skipped with a note. Also `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+The launch is pinned to `-p 1 -w 256`, which gives 8 CUDA warps or 4 HIP waves; Triton's pipeline is pinned to `num_stages=3`. Other PPWI, work-group, and stage values are not tuned. Other options include `-i` timed iterations (8), `--warmup` (2), `-n` poses (0 = whole deck), `--deck`, `-o`, `-r`, `-d`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -34,10 +34,10 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 Run one
 
 ```sh
-pixi run -e cuda python main.py --deck ../../data/miniBUDE/bm1 -w 32 -p 64
+pixi run -e cuda python main.py --deck ../../data/miniBUDE/bm1 --float -w 256 -p 1
 ```
 
-Run the sweep
+Run the canonical benchmark
 
 ```sh
 bash run.sh cuda
@@ -48,13 +48,13 @@ bash run.sh cuda
 Run one
 
 ```sh
-pixi run -e hip python main.py --deck ../../data/miniBUDE/bm1 -w 64 -p 64
+pixi run -e hip python main.py --deck ../../data/miniBUDE/bm1 --float -w 256 -p 1
 ```
 
-Run the sweep
+Run the canonical benchmark
 
 ```sh
 bash run.sh hip
 ```
 
-Extra arguments are passed to the sweep, for example `bash run.sh cuda --float --csv > results.csv`.
+Extra arguments are passed through, for example `bash run.sh cuda --csv > results.csv`.

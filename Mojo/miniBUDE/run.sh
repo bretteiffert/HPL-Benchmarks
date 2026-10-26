@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Runs the Mojo miniBUDE benchmark (compiled by `mojo run`) on the bm1 deck,
-# sweeping every ppwi (1..128) at work-group size 32 (CUDA) or 64 (HIP) in one
-# run.
+# Runs the Mojo miniBUDE benchmark on bm1 with pinned PPWI 1 and work-group 256.
 #
 #   bash run.sh <cuda|hip> [extra args passed to the run]
 #
@@ -23,8 +21,7 @@ fi
 BACKEND="$1"
 shift
 case "$BACKEND" in
-  cuda) WGSIZE=32 ;;
-  hip) WGSIZE=64 ;;
+  cuda|hip) ;;
   *)
     echo "error: unknown backend '$BACKEND' (expected cuda or hip)" >&2
     usage
@@ -32,6 +29,6 @@ case "$BACKEND" in
     ;;
 esac
 
-echo "miniBUDE - Mojo, ${BACKEND^^}: bm1, -p all -w $WGSIZE" >&2
+echo "miniBUDE - Mojo, ${BACKEND^^}: bm1, --float -p 1 -w 256 --warmup 2 -i 8" >&2
 pixi run --manifest-path "$SCRIPT_DIR" mojo run -D "BACKEND=$BACKEND" \
-  "$SCRIPT_DIR/main.mojo" --deck "$INPUT_DIR" -p all -w "$WGSIZE" "$@"
+  "$SCRIPT_DIR/main.mojo" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 8 "$@"

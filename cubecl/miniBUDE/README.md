@@ -18,18 +18,18 @@ If your environment sets `CC=nvc` (NVIDIA HPC SDK), nothing extra is needed: `.c
 Precision is selected at run time with a flag:
 
 ```bash
---double   # fp64, the default
---float    # fp32; first computes the energies once in fp64 and reports the difference
+--float    # fp32, the default; first computes energies once in fp64 for comparison
+--double   # optional fp64 mode
 ```
 
-One run sweeps every combination of poses per work-item and work-group size:
+The launch configuration is pinned:
 
 ```bash
--p, --ppwi LIST      # e.g. 1,4,16 or all (1 to 128); default 1
--w, --wgsize LIST    # e.g. 32,64; default 1
+-p, --ppwi 1         # one pose per work-item
+-w, --wgsize 256     # 256 work-items per group
 ```
 
-Combinations the pose count doesn't divide are skipped with a note.
+Other values are rejected, and the pose count must be divisible by 256.
 
 Other options:
 
@@ -53,10 +53,10 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 Run one
 
 ```bash
-cargo run --release --no-default-features --features cuda -- --deck ../../data/miniBUDE/bm1 -p 64 -w 32
+cargo run --release --no-default-features --features cuda -- --deck ../../data/miniBUDE/bm1 --float -p 1 -w 256
 ```
 
-Run the sweep
+Run the canonical benchmark
 
 ```bash
 bash run.sh cuda
@@ -67,13 +67,13 @@ bash run.sh cuda
 Run one
 
 ```bash
-cargo run --release --no-default-features --features hip -- --deck ../../data/miniBUDE/bm1 -p 64 -w 64
+cargo run --release --no-default-features --features hip -- --deck ../../data/miniBUDE/bm1 --float -p 1 -w 256
 ```
 
-Run the sweep
+Run the canonical benchmark
 
 ```bash
 bash run.sh hip
 ```
 
-The sweep runs every ppwi at work-group size 32 (CUDA) or 64 (HIP). Extra arguments are passed through, for example `bash run.sh cuda --float -w 32,64,128 --csv > results.csv`.
+Extra arguments are passed through, for example `bash run.sh cuda --csv > results.csv`.

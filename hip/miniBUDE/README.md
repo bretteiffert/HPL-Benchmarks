@@ -17,10 +17,10 @@ This creates `./bude-hip`. `HIPCC` defaults to `$HIP_PATH/bin/hipcc` (HIP_PATH d
 
 Precision is selected at run time with a flag:
 
-    --double   # fp64, the default
-    --float    # fp32; one untimed fp64 pass is run as the reference
+    --float    # fp32, the default; one untimed fp64 pass is run as the reference
+    --double   # optional fp64 mode
 
-Other options keep the upstream names: `--deck DIR`, `-i` timed iterations (default 8), `--warmup N` (default 2), `-n` poses (0 for all), `-p` PPWI list or `all`, `-w` work-group size list, `-d` device index or name substring, `-o` file for the first configuration's energies, `-r` energies shown in the report. One run sweeps every PPWI × work-group combination; combinations whose pose count is not a multiple of ppwi × wgsize are skipped with a note. Also `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+The canonical launch configuration is pinned to `-p 1 -w 256`; other PPWI or work-group values are rejected. Other options keep the upstream names: `--deck DIR`, `-i` timed iterations (default 8), `--warmup N` (default 2), `-n` poses (0 for all), `-d` device index or name substring, `-o` output energies, and `-r` energies shown in the report. Also `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -28,10 +28,10 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    ./bude-hip --deck ../../data/miniBUDE/bm1 -w 64 -p 64
+    ./bude-hip --deck ../../data/miniBUDE/bm1 --float -p 1 -w 256
 
-Run the sweep (every PPWI at work-group size 64)
+Run the canonical benchmark
 
     bash run.sh
 
-Extra arguments are passed to the sweep run, for example `bash run.sh --float --csv > results.csv`.
+Extra arguments are passed through, for example `bash run.sh --csv > results.csv`.

@@ -55,7 +55,7 @@ function plan_configs(a::Args, n::Int)
         push!(configs, (p, w))
     end
     isempty(configs) &&
-        fail("no (ppwi, wgsize) combination divides the $n poses; use -n, -p or -w")
+        fail("$n poses is not divisible by the pinned 256 poses per workgroup; use -n")
     notes = isempty(skipped) ? String[] :
         ["skipped (pose count $n not divisible by ppwi × wgsize): $(join(skipped, "; "))"]
     return configs, notes

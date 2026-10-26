@@ -118,6 +118,10 @@ Options parse_cli(int argc, char* argv[])
 
   if (csv && csv_raw)
     throw CliError("--csv and --csv-raw cannot be used together");
+  if (o.ppwis != std::vector<std::size_t>{1})
+    throw CliError("the pinned configuration requires --ppwi 1");
+  if (o.wgsizes != std::vector<std::size_t>{256})
+    throw CliError("the pinned configuration requires --wgsize 256");
   if (csv) o.output = OutputMode::Csv;
   if (csv_raw) o.output = OutputMode::CsvRaw;
   return o;
@@ -128,19 +132,17 @@ std::string help_text(const char* program)
   std::ostringstream h;
   h << "Usage: " << program << " [OPTIONS]\n"
     << "\n"
-    << "miniBUDE: protein-ligand docking energies, one run sweeping every PPWI x\n"
-    << "work-group size combination.\n"
+    << "miniBUDE: protein-ligand docking energies with one pinned launch configuration.\n"
     << "\n"
     << "Options:\n"
     << "      --deck DIR         input deck directory (default " << DATA_DIR << ")\n"
     << "  -i, --iter I           timed launches per configuration (default 8)\n"
     << "      --warmup N         untimed launches before them (default 2)\n"
     << "  -n, --poses N          poses to compute, 0 for all in the deck (default 0)\n"
-    << "  -p, --ppwi LIST        poses per work-item, comma-separated, or 'all'\n"
-    << "                         (default 1; available " << ppwi_list() << ")\n"
-    << "  -w, --wgsize LIST      work-group sizes, comma-separated (default 1)\n"
-    << "      --double           float64 (default)\n"
-    << "      --float            float32; adds one untimed fp64 pass as the reference\n"
+    << "  -p, --ppwi N           pinned poses per work-item; N must be 1 (default 1)\n"
+    << "  -w, --wgsize N         pinned work-group size; N must be 256 (default 256)\n"
+    << "      --float            float32 (default); adds one untimed fp64 reference pass\n"
+    << "      --double           optional float64 run\n"
     << "  -d, --device INDEX     device index from --list, or a substring of its name;\n"
     << "                         the energy profiler uses the same device (default 0)\n"
     << "  -l, --list             list devices (index: name) and exit\n"
@@ -151,8 +153,8 @@ std::string help_text(const char* program)
     << "      --no-energy        skip board-power measurement\n"
     << "  -h, --help             show this help and exit\n"
     << "\n"
-    << "Configurations whose pose count is not a multiple of ppwi x wgsize are\n"
-    << "skipped with a note. The last precision flag wins. Options take their value\n"
+    << "The pose count must be a multiple of 256. The last precision flag wins.\n"
+    << "Options take their value\n"
     << "as a separate argument (-w 32, not -w=32).\n"
     << "\n"
     << "Environment (all optional):\n"

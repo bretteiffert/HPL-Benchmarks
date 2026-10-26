@@ -69,6 +69,7 @@ def _key(name, value):
 
 
 def text_header(r):
+    subgroup = "warp" if r.backend == "CUDA" else "wave"
     if r.precision == "float32":
         prec = "float32 (checked against one untimed float64 pass)"
     else:
@@ -83,8 +84,9 @@ def text_header(r):
              % (r.deck, count(r.natlig), count(r.natpro), count(r.ntypes))),
         _key("Poses", "%s of %s in the deck" % (count(r.nposes), count(r.max_poses))),
         _key("PPWI", ", ".join(str(p) for p in r.ppwis)),
-        _key("WG size", "%s (warp size %d, from %s)"
-             % (", ".join(str(w) for w in r.wgsizes), r.warp_size, r.warp_how)),
+        _key("WG size", "%s (%s size %d, from %s)"
+             % (", ".join(str(w) for w in r.wgsizes), subgroup, r.warp_size, r.warp_how)),
+        _key("Groups", count(r.nposes // (r.ppwis[0] * r.wgsizes[0]))),
         _key("Num stages", r.num_stages),
         _key("Iterations", "%s (after %s warm-up)" % (count(r.iterations), count(r.warmup))),
         _key("Timing", r.timing),
@@ -96,8 +98,9 @@ def text_header(r):
 
 
 def text_results(r):
+    subgroup_label = "Warps" if r.backend == "CUDA" else "Waves"
     fmt = "%-6s%8s%7s%8s%14s%14s%14s%14s%11s%12s%17s%15s%14s"
-    lines = [fmt % ("PPWI", "WG size", "Warps", "Stages", "Min (s)", "Max (s)", "Avg (s)",
+    lines = [fmt % ("PPWI", "WG size", subgroup_label, "Stages", "Min (s)", "Max (s)", "Avg (s)",
                     "Stddev (s)", "GFLOP/s", "GFInst/s", "GInteractions/s",
                     "Overhead (s)", "Context (s)")]
     for s in r.samples:
@@ -109,9 +112,10 @@ def text_results(r):
                             "%.8f" % s.context_s))
     lines.append("  note: GFLOP/s, GFInst/s and GInteractions/s use the average time; "
                  "Overhead is host wall time minus kernel time, averaged")
-    b = best(r)
-    lines.append("  note: best: ppwi %d, wgsize %d (lowest average, %.8f s)"
-                 % (b.ppwi, b.wgsize, b.stats.mean))
+    if len(r.samples) > 1:
+        b = best(r)
+        lines.append("  note: best: ppwi %d, wgsize %d (lowest average, %.8f s)"
+                     % (b.ppwi, b.wgsize, b.stats.mean))
     lines += ["  note: %s" % n for n in r.skip_notes]
     return "\n".join(lines) + "\n"
 
@@ -213,8 +217,10 @@ def text_body(r):
 
 def text_stderr_tail(r):
     """Notes, energy and correctness on stderr in the CSV modes."""
-    notes = ["  note: best: ppwi %d, wgsize %d (lowest average, %.8f s)"
-             % (best(r).ppwi, best(r).wgsize, best(r).stats.mean)]
+    notes = []
+    if len(r.samples) > 1:
+        notes.append("  note: best: ppwi %d, wgsize %d (lowest average, %.8f s)"
+                     % (best(r).ppwi, best(r).wgsize, best(r).stats.mean))
     notes += ["  note: %s" % n for n in r.skip_notes]
     return "\n" + "\n".join(notes) + "\n\n" + text_energy(r) + "\n" + text_correctness(r)
 
@@ -229,7 +235,7 @@ def _prefix(r):
 
 
 def csv_summary(r):
-    lines = [_PREFIX + ",deck,natlig,natpro,nposes,ppwi,wgsize,iterations,min_s,max_s,avg_s,"
+    lines = [_PREFIX + ",deck,natlig,natpro,nposes,ppwi,wgsize,groups,subgroups,num_stages,warmup,iterations,min_s,max_s,avg_s,"
              "stddev_s,gflops,gfinsts,ginteractions,launch_overhead_s,context_s,"
              "energy_j_per_iter,avg_power_w,ref_l2_rel,ref_max_rel,ref_max_ulp,"
              "deck_l2_rel,deck_beyond_tol"]
@@ -239,19 +245,21 @@ def csv_summary(r):
                   if s.energy is not None else ",")
         refcols = ("%.6e,%.6e,%d" % (ref.l2RelNorm, ref.maxRel, ref.maxUlp)
                    if ref is not None else ",,")
-        lines.append("%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f,%.9f,%.4f,%.4f,%.4f,%.9f,%.9f,%s,%s,%.6e,%d" % (
+        lines.append("%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f,%.9f,%.4f,%.4f,%.4f,%.9f,%.9f,%s,%s,%.6e,%d" % (
             _prefix(r), csv_field(r.deck), r.natlig, r.natpro, r.nposes, s.ppwi, s.wgsize,
-            r.iterations, st.min, st.max, st.mean, st.stdDev, s.gflops, s.gfinsts,
+            r.nposes // (s.ppwi * s.wgsize), s.num_warps, s.num_stages, r.warmup, r.iterations,
+            st.min, st.max, st.mean, st.stdDev, s.gflops, s.gfinsts,
             s.ginteractions, s.launch_overhead_s, s.context_s, energy, refcols,
             dk.l2RelNorm, dk.beyondTolerance))
     return "\n".join(lines) + "\n"
 
 
 def csv_raw(r):
-    lines = [_PREFIX + ",deck,natlig,natpro,nposes,ppwi,wgsize,iteration,time_s"]
+    lines = [_PREFIX + ",deck,natlig,natpro,nposes,ppwi,wgsize,groups,subgroups,num_stages,warmup,iteration,time_s"]
     for s in r.samples:
-        head = "%s,%s,%d,%d,%d,%d,%d" % (_prefix(r), csv_field(r.deck), r.natlig, r.natpro,
-                                         r.nposes, s.ppwi, s.wgsize)
+        head = "%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d" % (
+            _prefix(r), csv_field(r.deck), r.natlig, r.natpro, r.nposes, s.ppwi, s.wgsize,
+            r.nposes // (s.ppwi * s.wgsize), s.num_warps, s.num_stages, r.warmup)
         for i, t in enumerate(s.times, start=1):
             lines.append("%s,%d,%.9f" % (head, i, t))
     return "\n".join(lines) + "\n"

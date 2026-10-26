@@ -36,8 +36,8 @@ struct Args(Copyable):
         self.iterations = 8
         self.warmup = 2
         self.nposes = 0
-        self.ppwis = List[Int]()
-        self.wgsizes = List[Int]()
+        self.ppwis = [1]
+        self.wgsizes = [256]
         self.rows = 8
         self.out_path = ""
         self.golden_path = ""
@@ -53,8 +53,8 @@ struct Args(Copyable):
 def help_text() -> String:
     return """Usage: minibude [OPTIONS]
 
-miniBUDE (Mojo): protein-ligand docking energy evaluation. One run sweeps
-every (ppwi, wgsize) combination given with -p and -w.
+miniBUDE (Mojo): protein-ligand docking energy evaluation with the pinned
+PPWI 1, work-group 256 launch configuration.
 
 Options:
   -h, --help, help         Print this message and exit
@@ -65,9 +65,8 @@ Options:
   -i, --iter I             Timed launches per configuration (default: 8)
       --warmup N           Untimed launches before them (default: 2)
   -n, --poses N            Compute only the first N poses; 0 = all (default: 0)
-  -p, --ppwi LIST          Comma-separated poses per work-item, or `all`
-                           (default: 1; available: """ + PPWIS_STR + """)
-  -w, --wgsize LIST        Comma-separated work-group sizes (default: 1)
+  -p, --ppwi N             Pinned poses per work-item; N must be 1
+  -w, --wgsize N           Pinned work-group size; N must be 256
   -r, --rows N             Print the first N energies (default: 8)
   -o, --out FILE           Write the first configuration's energies to FILE,
                            one per line (usable as --golden)
@@ -82,8 +81,7 @@ Options:
                            stderr (not with --csv)
       --no-energy          Skip board-power measurement
 
-Configurations whose ppwi x wgsize does not divide the pose count are skipped
-with a note.
+The pose count must be a multiple of 256.
 
 Environment (all optional):
   GPU_NAME                 Device name to report instead of the queried one
@@ -206,8 +204,8 @@ def parse_arguments() raises -> Args:
         i += 1
     if args.csv and args.csv_raw:
         raise Error("--csv and --csv-raw are mutually exclusive")
-    if len(args.ppwis) == 0:
-        args.ppwis.append(1)
-    if len(args.wgsizes) == 0:
-        args.wgsizes.append(1)
+    if len(args.ppwis) != 1 or args.ppwis[0] != 1:
+        raise Error("the pinned configuration requires --ppwi 1")
+    if len(args.wgsizes) != 1 or args.wgsizes[0] != 256:
+        raise Error("the pinned configuration requires --wgsize 256")
     return args^

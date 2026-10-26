@@ -221,6 +221,7 @@ fn write_header(m: &Meta, out: &mut dyn Write) -> io::Result<()> {
     )?;
     kv(out, "PPWI", joined(&m.ppwis))?;
     kv(out, "Work-group", joined(&m.wgsizes))?;
+    kv(out, "Groups", thousands(m.nposes / (m.ppwis[0] * m.wgsizes[0])))?;
     kv(
         out,
         "Iterations",
@@ -448,7 +449,7 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     let m = &r.meta;
     writeln!(
         out,
-        "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,iterations,\
+        "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iterations,\
          min_s,max_s,avg_s,stddev_s,gflops,gfinsts,ginteractions,launch_overhead_s,context_s,\
          energy_j_per_iter,avg_power_w,ref_l2_rel,ref_max_rel,ref_max_ulp,deck_l2_rel,deck_beyond_tol"
     )?;
@@ -468,10 +469,12 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
         };
         writeln!(
             out,
-            "{},{},{},{},{:.9},{:.9},{:.9},{:.9},{:.3},{:.3},{:.6},{:.9},{:.6},{},{},{},{},{},{:.6e},{}",
+            "{},{},{},{},{},{},{:.9},{:.9},{:.9},{:.9},{:.3},{:.3},{:.6},{:.9},{:.6},{},{},{},{},{},{:.6e},{}",
             prefix,
             c.ppwi,
             c.wgsize,
+            m.nposes / (c.ppwi * c.wgsize),
+            m.warmup,
             m.iterations,
             c.min(),
             c.max(),
@@ -497,13 +500,23 @@ fn write_csv_summary(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
 fn write_csv_raw(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
     writeln!(
         out,
-        "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,iteration,time_s"
+        "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iteration,time_s"
     )?;
     let prefix = csv_prefix(&r.meta);
     for c in &r.configs {
         for (i, t) in c.times.iter().enumerate() {
             // Warm-up runs are not recorded, so timed iterations start at 1.
-            writeln!(out, "{},{},{},{},{:.9}", prefix, c.ppwi, c.wgsize, i + 1, t)?;
+            writeln!(
+                out,
+                "{},{},{},{},{},{},{:.9}",
+                prefix,
+                c.ppwi,
+                c.wgsize,
+                r.meta.nposes / (c.ppwi * c.wgsize),
+                r.meta.warmup,
+                i + 1,
+                t
+            )?;
         }
     }
     Ok(())

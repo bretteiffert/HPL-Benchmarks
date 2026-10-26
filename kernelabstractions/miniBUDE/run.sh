@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# miniBUDE (KernelAbstractions) sweep: every PPWI at the vendor's work-group size
-# (32 on CUDA, 64 on HIP) in one run, on the bm1 deck.
+# miniBUDE (KernelAbstractions): pinned PPWI 1 and work-group 256 on bm1.
 #
 #   bash run.sh <cuda|hip> [extra args passed to the run]
 #
@@ -14,8 +13,7 @@ if [[ $# -lt 1 ]]; then
 fi
 backend="$1"; shift
 case "$backend" in
-  cuda) wgsize=32 ;;
-  hip)  wgsize=64 ;;
+  cuda|hip) ;;
   *) echo "error: unknown backend '$backend' (valid: cuda, hip)" >&2; usage; exit 1 ;;
 esac
 
@@ -32,6 +30,6 @@ fi
 echo "run.sh: preparing $PROJECT" >&2
 "$JULIA" --project="$PROJECT" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' 1>&2
 
-echo "run.sh: $backend, deck bm1, ppwi all, wgsize $wgsize" >&2
+echo "run.sh: $backend, deck bm1, float32, ppwi 1, wgsize 256" >&2
 "$JULIA" --project="$PROJECT" -O3 --check-bounds=no "$ROOT/main.jl" \
-  --deck "$DECK" -p all -w "$wgsize" "$@"
+  --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 8 "$@"

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Runs the CubeCL miniBUDE benchmark over every poses-per-work-item value at
-# the backend's native work-group size. The sweep happens inside one run, so
-# --csv output is a single table.
+# Runs CubeCL miniBUDE with pinned PPWI 1 and work-group 256 on bm1.
 #
 # Usage: ./run.sh <cuda|hip> [extra benchmark args...]
 #   e.g. ./run.sh cuda --csv > results.csv
@@ -13,8 +11,7 @@ DECK="$SCRIPT_DIR/../../data/miniBUDE/bm1"
 
 backend="${1:-}"
 case "$backend" in
-  cuda) shift; WGSIZE=32 ;;  # NVIDIA warp size
-  hip)  shift; WGSIZE=64 ;;  # AMD wavefront size
+  cuda|hip) shift ;;
   *)
     echo "usage: $0 <cuda|hip> [benchmark args...]" >&2
     exit 1
@@ -28,7 +25,6 @@ echo "miniBUDE - CubeCL, ${backend^^}" >&2
 cargo build --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
   --no-default-features --features "$backend" >&2
 
-# Later flags win, so extra arguments (e.g. -w 64,128) override these defaults.
 cargo run --quiet --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
   --no-default-features --features "$backend" -- \
-  --deck "$DECK" -p all -w "$WGSIZE" "$@"
+  --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 8 "$@"

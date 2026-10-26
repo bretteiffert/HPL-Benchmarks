@@ -103,6 +103,7 @@ function print_header(io::IO, r::Report)
     kv(io, "Poses", "$(thousands(r.nposes)) (of $(thousands(r.max_poses)))")
     kv(io, "PPWI", join(r.ppwi, ","))
     kv(io, "Workgroup", join(r.wgsize, ","))
+    kv(io, "Groups", thousands(r.nposes ÷ (r.ppwi[1] * r.wgsize[1])))
     kv(io, "Iterations", "$(r.iterations) (after $(r.warmup) warm-up)")
     kv(io, "Timing", r.timing)
     kv(io, "Energy", r.energy_enabled ? "libkernelenergy (board power)" : "disabled (--no-energy)")
@@ -237,12 +238,12 @@ prefix(r::Report) = join((IMPLEMENTATION, csv_field(r.backend), csv_field(r.devi
                           r.precision), ",")
 
 const CSV_HEADER = "implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi," *
-                   "wgsize,iterations,min_s,max_s,avg_s,stddev_s,gflops,gfinsts,ginteractions," *
+                   "wgsize,groups,warmup,iterations,min_s,max_s,avg_s,stddev_s,gflops,gfinsts,ginteractions," *
                    "launch_overhead_s,context_s,energy_j_per_iter,avg_power_w,ref_l2_rel," *
                    "ref_max_rel,ref_max_ulp,deck_l2_rel,deck_beyond_tol"
 
 const CSV_RAW_HEADER = "implementation,backend,device,precision,deck,natlig,natpro,nposes," *
-                       "ppwi,wgsize,iteration,time_s"
+                        "ppwi,wgsize,groups,warmup,iteration,time_s"
 
 f9(x) = fixed(x, 9)
 f4(x) = fixed(x, 4)
@@ -257,7 +258,8 @@ function print_csv(io::IO, r::Report)
         rl2, rmax, rulp = ref === nothing ? ("", "", "") :
             (sci(ref.l2RelNorm, 6), sci(ref.maxRel, 6), string(ref.maxUlp))
         println(io, join((prefix(r), csv_field(r.deck), r.natlig, r.natpro, r.nposes,
-                          c.ppwi, c.wgsize, r.iterations, f9(minimum(t)), f9(maximum(t)),
+                           c.ppwi, c.wgsize, r.nposes ÷ (c.ppwi * c.wgsize), r.warmup,
+                           r.iterations, f9(minimum(t)), f9(maximum(t)),
                           f9(avg(t)), f9(stddev(t)), f4(c.gflops), f4(c.gfinsts),
                           f4(c.ginteractions), f9(c.launch_overhead_s), f9(c.context_s),
                           ej, ew, rl2, rmax, rulp, sci(c.deck.l2RelNorm, 6),
@@ -269,7 +271,8 @@ function print_csv_raw(io::IO, r::Report)
     println(io, CSV_RAW_HEADER)
     for c in r.configs, (k, t) in enumerate(c.times)
         println(io, join((prefix(r), csv_field(r.deck), r.natlig, r.natpro, r.nposes,
-                          c.ppwi, c.wgsize, k, f9(t)), ","))
+                           c.ppwi, c.wgsize, r.nposes ÷ (c.ppwi * c.wgsize), r.warmup,
+                           k, f9(t)), ","))
     end
 end
 

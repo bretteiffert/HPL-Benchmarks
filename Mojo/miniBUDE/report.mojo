@@ -268,6 +268,7 @@ def format_header(r: Report) -> String:
     )
     s += _key("PPWI", _ints(r.ppwis))
     s += _key("Work-group", _ints(r.wgsizes))
+    s += _key("Groups", thousands(r.nposes // (r.ppwis[0] * r.wgsizes[0])))
     s += _key(
         "Iterations",
         thousands(r.iterations) + " (after " + thousands(r.warmup) + " warm-up)",
@@ -321,18 +322,19 @@ def format_results(r: Report) -> String:
         s += rjust(fmt_fixed(x.sample.context_s, 8), 14)
         s += "\n"
     s += _notes(r.result_notes)
-    ref b = r.results[r.best()]
-    s += (
-        "  note: best: ppwi "
-        + String(b.sample.ppwi)
-        + ", wgsize "
-        + String(b.sample.wgsize)
-        + " (lowest avg, "
-        + fmt_fixed(b.stats.mean, 8)
-        + " s, "
-        + fmt_fixed(b.gflops, 3)
-        + " GFLOP/s)\n"
-    )
+    if len(r.results) > 1:
+        ref b = r.results[r.best()]
+        s += (
+            "  note: best: ppwi "
+            + String(b.sample.ppwi)
+            + ", wgsize "
+            + String(b.sample.wgsize)
+            + " (lowest avg, "
+            + fmt_fixed(b.stats.mean, 8)
+            + " s, "
+            + fmt_fixed(b.gflops, 3)
+            + " GFLOP/s)\n"
+        )
     s += (
         "  note: rates use the average time; Launch = host wall time minus"
         " device time per launch; Context = buffer creation and upload\n"
@@ -552,13 +554,17 @@ def _prefix(r: Report, x: Result) -> String:
         + ","
         + String(x.sample.wgsize)
         + ","
+        + String(r.nposes // (x.sample.ppwi * x.sample.wgsize))
+        + ","
+        + String(r.warmup)
+        + ","
     )
 
 
 def csv_header() -> String:
     return (
         CSV_PREFIX
-        + "deck,natlig,natpro,nposes,ppwi,wgsize,iterations,min_s,max_s,"
+        + "deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iterations,min_s,max_s,"
         + "avg_s,stddev_s,gflops,gfinsts,ginteractions,launch_overhead_s,"
         + "context_s,energy_j_per_iter,avg_power_w,ref_l2_rel,ref_max_rel,"
         + "ref_max_ulp,deck_l2_rel,deck_beyond_tol"
@@ -598,7 +604,7 @@ def csv_rows(r: Report) -> String:
 
 def csv_raw_header() -> String:
     return (
-        CSV_PREFIX + "deck,natlig,natpro,nposes,ppwi,wgsize,iteration,time_s"
+        CSV_PREFIX + "deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iteration,time_s"
     )
 
 

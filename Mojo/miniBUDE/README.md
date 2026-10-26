@@ -21,7 +21,7 @@ Precision is selected at run time with a flag:
 
 `--double` exists but does not work with Mojo 1.2: the kernel uses float64 `sin`/`cos`, which Mojo 1.2 rejects on NVIDIA at compile time and cannot lower on AMD. The float64 path is therefore only compiled when you add `-D FP64` (`mojo run -D BACKEND=cuda -D FP64 ...`); with it, float32 runs also get a float64 reference pass on the device. Without it, the float64 reference for the accuracy metrics comes from `--golden FILE` (for example the CUDA build's float64 `-o` output).
 
-Other options: `-p` ppwi list or `all` (1), `-w` work-group sizes (1), `-i` timed launches (8), `--warmup` (2), `-n` poses (all), `--deck DIR` (../../data/miniBUDE/bm1), `-r` energies to print (8), `-o FILE`, `--golden FILE`, `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+The launch is pinned to `-p 1 -w 256`; other values are rejected. Other options include `-i` timed launches (8), `--warmup` (2), `-n` poses (all), `--deck DIR` (../../data/miniBUDE/bm1), `-r` energies to print (8), `-o FILE`, `--golden FILE`, `--device INDEX`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -29,9 +29,9 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    pixi run mojo run -D BACKEND=cuda main.mojo --deck ../../data/miniBUDE/bm1 -w 32 -p 64
+    pixi run mojo run -D BACKEND=cuda main.mojo --deck ../../data/miniBUDE/bm1 --float -w 256 -p 1
 
-Run the sweep
+Run the canonical benchmark
 
     bash run.sh cuda
 
@@ -39,10 +39,10 @@ Run the sweep
 
 Run one
 
-    pixi run mojo run -D BACKEND=hip main.mojo --deck ../../data/miniBUDE/bm1 -w 64 -p 64
+    pixi run mojo run -D BACKEND=hip main.mojo --deck ../../data/miniBUDE/bm1 --float -w 256 -p 1
 
-Run the sweep
+Run the canonical benchmark
 
     bash run.sh hip
 
-Extra arguments are passed to the sweep run, for example `bash run.sh cuda --csv > results.csv`. The sweep is a single run over every ppwi, so the CSV has one row per configuration and the report ends with the best one.
+Extra arguments are passed through, for example `bash run.sh cuda --csv > results.csv`.

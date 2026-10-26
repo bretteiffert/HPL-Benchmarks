@@ -110,11 +110,6 @@ def main(argv):
     if warp_how == "guessed":
         r.header_notes.append("warp size could not be queried; assumed %d for %s"
                               % (warp_size, be))
-    if not opts.wgsizes:
-        opts.wgsizes = [warp_size]
-        r.header_notes.append("wgsize defaults to one warp; the reference default of 1 "
-                              "is not expressible in Triton")
-
     deck_dir = opts.deck or os.path.normpath(os.path.join(
         os.path.dirname(os.path.abspath(__file__)), cli.DEFAULT_DECK))
     try:
@@ -136,9 +131,7 @@ def main(argv):
     r.nposes, r.max_poses = dk.nposes, dk.max_poses
     r.ppwis, r.wgsizes = opts.ppwis, opts.wgsizes
     r.warp_size, r.warp_how = warp_size, warp_how
-    r.num_stages = ("tuned per configuration over %s (untimed)"
-                    % ", ".join(map(str, bude.NUM_STAGES_CANDIDATES))
-                    if bude.AUTOTUNE_NUM_STAGES else "pinned at %d" % bude.NUM_STAGES_DEFAULT)
+    r.num_stages = "pinned at %d" % bude.NUM_STAGES_DEFAULT
     r.iterations, r.warmup, r.rows = opts.iterations, opts.warmup, opts.rows
     r.energy_enabled = opts.energy
     r.ulp_labels = [bude.ulp_bucket_label(i) for i in range(bude.ULP_NBUCKETS)]

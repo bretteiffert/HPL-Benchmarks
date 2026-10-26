@@ -1,9 +1,8 @@
 //! CubeCL miniBUDE benchmark with build-time CUDA or HIP backend selection
 //! (`--features cuda` or `--features hip`).
 //!
-//! - Reads an input deck, then runs every (ppwi, wgsize) configuration given on
-//!   the command line; configurations the pose count doesn't divide are skipped.
-//! - Precision: float64 by default, float32 with `--float`. A float32 run first
+//! - Reads an input deck, then runs the pinned PPWI 1, work-group 256 configuration.
+//! - Precision: float32 by default, with optional float64. A float32 run first
 //!   computes the energies once in float64 and compares against them.
 //! - Correctness: per configuration, against that fp64 pass (float32 runs) and,
 //!   informationally, against the deck's low-precision reference energies.

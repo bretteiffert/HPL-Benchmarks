@@ -15,6 +15,8 @@ pub const DEFAULT_WARMUP: usize = 2;
 pub const DEFAULT_ROWS: usize = 8;
 pub const DEFAULT_DECK: &str = "../../data/miniBUDE/bm1";
 pub const PPWIS: [usize; 8] = [1, 2, 4, 8, 16, 32, 64, 128];
+pub const PINNED_PPWI: usize = 1;
+pub const PINNED_WGSIZE: usize = 256;
 
 pub struct Args {
     pub list: bool,
@@ -41,12 +43,12 @@ impl Default for Args {
             poses: 0,
             iterations: DEFAULT_ITERS,
             warmup: DEFAULT_WARMUP,
-            ppwis: vec![PPWIS[0]],
-            wgsizes: vec![1],
+            ppwis: vec![PINNED_PPWI],
+            wgsizes: vec![PINNED_WGSIZE],
             rows: DEFAULT_ROWS,
             out: None,
             device_index: 0,
-            precision: Precision::Float64,
+            precision: Precision::Float32,
             output: OutputMode::Text,
             energy: true,
         }
@@ -64,18 +66,17 @@ fn print_help(prog: &str) {
     println!("  -n  --poses      N       Compute energies for the first N poses (default 0 = all)");
     println!("  -i  --iter       I       Timed iterations per configuration (default {})", DEFAULT_ITERS);
     println!("      --warmup     W       Untimed iterations before them (default {})", DEFAULT_WARMUP);
-    println!("  -p  --ppwi       LIST    Poses per work-item, comma-separated, or `all`");
-    println!("                           (default {}; available {:?})", PPWIS[0], PPWIS);
-    println!("  -w  --wgsize     LIST    Work-group sizes, comma-separated (default 1)");
-    println!("      --float              Use float32; also runs an fp64 reference pass");
-    println!("      --double             Use float64 (default)");
+    println!("  -p  --ppwi       N       Pinned poses per work-item; N must be {}", PINNED_PPWI);
+    println!("  -w  --wgsize     N       Pinned work-group size; N must be {}", PINNED_WGSIZE);
+    println!("      --float              Use float32 (default); also runs an fp64 reference pass");
+    println!("      --double             Use optional float64 mode");
     println!("  -r  --rows       N       Show the first N pose energies (default {})", DEFAULT_ROWS);
     println!("  -o  --out        PATH    Save all pose energies of the first configuration to PATH");
     println!("      --csv                CSV to stdout: one summary row per configuration");
     println!("      --csv-raw            CSV to stdout: one row per configuration per timed iteration");
     println!("      --no-energy          Skip energy measurement");
     println!();
-    println!("Every ppwi x wgsize combination runs; ones the pose count does not divide are skipped.");
+    println!("The pose count must be a multiple of {}.", PINNED_PPWI * PINNED_WGSIZE);
     println!("In the CSV modes, the header, energy and correctness sections go to stderr.");
     println!();
     println!("Environment:");
@@ -164,5 +165,11 @@ pub fn parse_arguments() -> Args {
         (false, true) => OutputMode::CsvRaw,
         (false, false) => OutputMode::Text,
     };
+    if args.ppwis.len() != 1 || args.ppwis[0] != PINNED_PPWI {
+        fail("the pinned configuration requires --ppwi 1");
+    }
+    if args.wgsizes.len() != 1 || args.wgsizes[0] != PINNED_WGSIZE {
+        fail("the pinned configuration requires --wgsize 256");
+    }
     args
 }

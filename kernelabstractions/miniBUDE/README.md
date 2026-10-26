@@ -24,10 +24,10 @@ The default deck is ../../data/miniBUDE/bm1; `--deck DIR` selects another.
 
 Precision is selected at run time with a flag:
 
-    --double   # fp64, the default
-    --float    # fp32; one untimed fp64 pass is run as the reference
+    --float    # fp32, the default; one untimed fp64 pass is run as the reference
+    --double   # optional fp64 mode
 
-Other options use the upstream miniBUDE names: `-i` timed iterations (8), `--warmup` (2), `-n` poses (all), `-p` PPWI list or `all` (1), `-w` work-group size list (1), `--deck`, `-o` save the first configuration's energies, `-r` energies to print (8), `-d`/`--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. One run sweeps every (PPWI, wgsize) combination and skips those that do not divide the pose count. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+The launch is pinned to `-p 1 -w 256`; other values are rejected. Other options include `-i` timed iterations (8), `--warmup` (2), `-n` poses (all), `--deck`, `-o`, `-r`, `-d`/`--device`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -35,9 +35,9 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    julia --project=env/cuda -O3 --check-bounds=no main.jl -p 8 -w 32
+    julia --project=env/cuda -O3 --check-bounds=no main.jl --float -p 1 -w 256
 
-Run the sweep
+Run the canonical benchmark
 
     bash run.sh cuda
 
@@ -45,10 +45,10 @@ Run the sweep
 
 Run one
 
-    julia --project=env/hip -O3 --check-bounds=no main.jl -p 8 -w 64
+    julia --project=env/hip -O3 --check-bounds=no main.jl --float -p 1 -w 256
 
-Run the sweep
+Run the canonical benchmark
 
     bash run.sh hip
 
-Extra arguments are passed to the sweep run, for example `bash run.sh cuda --float --csv > results.csv`.
+Extra arguments are passed through, for example `bash run.sh cuda --csv > results.csv`.

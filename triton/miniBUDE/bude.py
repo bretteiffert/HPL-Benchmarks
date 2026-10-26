@@ -13,10 +13,7 @@ from kernels import fasten_main
 
 REPORT_TOLERANCE_PCT = 0.025
 
-AUTOTUNE_NUM_STAGES = True
-NUM_STAGES_CANDIDATES = (1, 2, 3, 4)
 NUM_STAGES_DEFAULT = 3
-NUM_STAGES_TRIALS = 3
 
 PPWIS = (1, 2, 4, 8, 16, 32, 64, 128)
 
@@ -120,41 +117,11 @@ class Timer:
         return ms * 1.0e-3, wall
 
 
-def tune_num_stages(buf, ppwi, wgsize, warp_size, timer):
-    """Untimed: pick the fastest num_stages candidate that fits the device."""
-    if not AUTOTUNE_NUM_STAGES:
-        buf.launch(ppwi, wgsize, warp_size, NUM_STAGES_DEFAULT)
-        return NUM_STAGES_DEFAULT
-    best, first_error = None, None
-    for candidate in NUM_STAGES_CANDIDATES:
-        try:
-            run = lambda: buf.launch(ppwi, wgsize, warp_size, candidate)  # noqa: E731
-            timer.time(run, "num_stages tuning")
-            t = min(timer.time(run, "num_stages tuning")[0] for _ in range(NUM_STAGES_TRIALS))
-        except OutOfResources:
-            continue
-        except TimerError:
-            raise
-        except Exception as e:  # compile failure for this candidate
-            if first_error is None:
-                first_error = e
-            continue
-        if best is None or t < best[1]:
-            best = (candidate, t)
-    if best is None:
-        if first_error is not None:
-            raise ConfigUnavailable("no num_stages candidate compiled (%s)"
-                                    % str(first_error).replace("\n", " ")[:160])
-        raise ConfigUnavailable("every num_stages candidate exceeded device resources")
-    return best[0]
-
-
 def reference_pass(deck, ppwi, wgsize, warp_size, device):
     """ONE untimed float64 launch, the reference for float32 runs."""
     buf = Buffers(deck, np.float64, device)
     last = None
-    for stages in (NUM_STAGES_DEFAULT,) + tuple(s for s in NUM_STAGES_CANDIDATES
-                                                if s != NUM_STAGES_DEFAULT):
+    for stages in (NUM_STAGES_DEFAULT,):
         try:
             buf.launch(ppwi, wgsize, warp_size, stages)
             torch.cuda.synchronize()
@@ -186,7 +153,7 @@ class Sample:
 def run_config(buf, ppwi, wgsize, warp_size, warmup, iterations, timer, meter_factory):
     s = Sample(ppwi, wgsize, wgsize // warp_size)
     s.context_s = buf.context_s
-    s.num_stages = tune_num_stages(buf, ppwi, wgsize, warp_size, timer)
+    s.num_stages = NUM_STAGES_DEFAULT
     run = lambda: buf.launch(ppwi, wgsize, warp_size, s.num_stages)  # noqa: E731
     for i in range(warmup):
         timer.time(run, "warm-up iteration %d" % (i + 1))

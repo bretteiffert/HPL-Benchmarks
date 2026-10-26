@@ -16,11 +16,11 @@ Base.@kwdef mutable struct Args
     warmup::Int = 2
     poses::Int = 0                     # 0 = all poses in the deck
     ppwi::Vector{Int} = [1]
-    wgsize::Vector{Int} = [1]
+    wgsize::Vector{Int} = [256]
     deck::String = DEFAULT_DECK
     out::String = ""
     rows::Int = 8
-    precision::Symbol = :double        # :double | :float
+    precision::Symbol = :float         # :double | :float
     device::Int = 0
     csv::Bool = false
     csv_raw::Bool = false
@@ -102,6 +102,8 @@ function parse_args(argv::Vector{String})
     a.csv && a.csv_raw && throw(CliError("--csv and --csv-raw are mutually exclusive"))
     unique!(a.ppwi)
     unique!(a.wgsize)
+    a.ppwi == [1] || throw(CliError("the pinned configuration requires --ppwi 1"))
+    a.wgsize == [256] || throw(CliError("the pinned configuration requires --wgsize 256"))
     return a
 end
 
@@ -110,21 +112,20 @@ function print_help(io::IO = stdout)
     Usage: julia --project=env/<cuda|hip> main.jl [OPTIONS]
 
     miniBUDE (KernelAbstractions). The backend is the Julia environment:
-    env/cuda (CUDA.jl) or env/hip (AMDGPU.jl). One run sweeps every
-    (PPWI, wgsize) combination; combinations that do not divide the pose
-    count are skipped with a note.
+    env/cuda (CUDA.jl) or env/hip (AMDGPU.jl). The launch configuration is
+    pinned to PPWI 1 and work-group size 256.
 
     Options:
       -i, --iter N           timed iterations (default 8)
           --warmup N         warm-up iterations, excluded from everything (default 2)
       -n, --poses N          poses to use (default: all poses in the deck)
-      -p, --ppwi LIST|all    poses per work-item, from 1,2,4,8,16,32,64,128 (default 1)
-      -w, --wgsize LIST      work-group sizes (default 1)
+      -p, --ppwi N           pinned poses per work-item; N must be 1
+      -w, --wgsize N         pinned work-group size; N must be 256
           --deck DIR         input deck (default ../../data/miniBUDE/bm1)
       -o, --out PATH         save the first configuration's energies
       -r, --rows N           energies to print in the text report (default 8)
-          --double           float64 (default)
-          --float            float32; also runs one untimed float64 pass as the reference
+          --float            float32 (default); also runs one untimed float64 reference pass
+          --double           optional float64 mode
       -d, --device INDEX     device index; the energy profiler uses the same index (default 0)
           --list             list devices (index: name) and exit
           --csv              summary CSV on stdout (report on stderr)
