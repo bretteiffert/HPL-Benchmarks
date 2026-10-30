@@ -177,7 +177,10 @@ fn run<F: Elem>(args: &Args, use_fma: bool) {
     validate_block_size(args, hw.max_units_per_cube);
 
     let (device, name_note) = backend::resolve_name(args.device_index, &client);
-    let (groups, groups_detail) = dot_groups(hw.num_streaming_multiprocessors);
+    let compute_units = hw
+        .num_streaming_multiprocessors
+        .or_else(|| backend::compute_units(args.device_index));
+    let (groups, groups_detail) = dot_groups(compute_units);
 
     let meta = Meta {
         backend: BACKEND_LABEL,

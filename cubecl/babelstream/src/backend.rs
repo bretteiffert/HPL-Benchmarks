@@ -54,6 +54,12 @@ pub fn client(device: &BackendDevice) -> Client {
     BackendRuntime::client(device)
 }
 
+/// Number of SMs/CUs reported directly by the vendor driver. CubeCL 0.10 does
+/// not populate this device property consistently on every backend.
+pub fn compute_units(index: usize) -> Option<u32> {
+    vendor::compute_units(index)
+}
+
 /// Placeholder used when the device reports no name.
 pub fn placeholder_name(index: usize) -> String {
     format!("{} device {}", BACKEND_LABEL, index)
@@ -104,6 +110,7 @@ mod vendor {
     type CuInitFn = unsafe extern "C" fn(u32) -> i32;
     type CuVersionFn = unsafe extern "C" fn(*mut i32) -> i32;
     type CuCountFn = unsafe extern "C" fn(*mut i32) -> i32;
+    type CuAttributeFn = unsafe extern "C" fn(*mut i32, i32, i32) -> i32;
     type NvmlInitFn = unsafe extern "C" fn() -> u32;
     type NvmlDriverFn = unsafe extern "C" fn(*mut c_char, u32) -> u32;
     type NvmlShutdownFn = unsafe extern "C" fn() -> u32;
@@ -116,6 +123,22 @@ mod vendor {
             if init(0) != 0 { return None; }
             let mut value = 0i32;
             (count(&mut value) == 0 && value >= 0).then_some(value as usize)
+        }
+    }
+
+    pub fn compute_units(index: usize) -> Option<u32> {
+        // CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT from cuda.h.
+        const MULTIPROCESSOR_COUNT: i32 = 16;
+        let lib = open_first(&["libcuda.so.1".into(), "libcuda.so".into()])?;
+        unsafe {
+            let init = lib.get::<CuInitFn>(c"cuInit").ok()?;
+            let attribute = lib.get::<CuAttributeFn>(c"cuDeviceGetAttribute").ok()?;
+            if init(0) != 0 {
+                return None;
+            }
+            let mut value = 0i32;
+            (attribute(&mut value, MULTIPROCESSOR_COUNT, index as i32) == 0 && value > 0)
+                .then_some(value as u32)
         }
     }
 
@@ -173,6 +196,7 @@ mod vendor {
     type InitFn = unsafe extern "C" fn(u32) -> i32;
     type VersionFn = unsafe extern "C" fn(*mut i32) -> i32;
     type CountFn = unsafe extern "C" fn(*mut i32) -> i32;
+    type AttributeFn = unsafe extern "C" fn(*mut i32, i32, i32) -> i32;
 
     pub fn device_count() -> Option<usize> {
         let mut candidates = Vec::new();
@@ -191,6 +215,32 @@ mod vendor {
             if init(0) != 0 { return None; }
             let mut value = 0i32;
             (count(&mut value) == 0 && value >= 0).then_some(value as usize)
+        }
+    }
+
+    pub fn compute_units(index: usize) -> Option<u32> {
+        // hipDeviceAttributeMultiprocessorCount from hip_runtime_api.h. This
+        // value is 63 in every HIP binding supported by cubecl-hip-sys 7.x.
+        const MULTIPROCESSOR_COUNT: i32 = 63;
+        let mut candidates = Vec::new();
+        for var in ["ROCM_PATH", "HIP_PATH"] {
+            if let Ok(root) = std::env::var(var) {
+                candidates.push(format!("{}/lib/libamdhip64.so", root));
+            }
+        }
+        for suffix in ["", ".7", ".6", ".5"] {
+            candidates.push(format!("libamdhip64.so{}", suffix));
+        }
+        let lib = open_first(&candidates)?;
+        unsafe {
+            let init = lib.get::<InitFn>(c"hipInit").ok()?;
+            let attribute = lib.get::<AttributeFn>(c"hipDeviceGetAttribute").ok()?;
+            if init(0) != 0 {
+                return None;
+            }
+            let mut value = 0i32;
+            (attribute(&mut value, MULTIPROCESSOR_COUNT, index as i32) == 0 && value > 0)
+                .then_some(value as u32)
         }
     }
 

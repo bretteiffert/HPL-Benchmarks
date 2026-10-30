@@ -56,6 +56,12 @@ def main(argv):
     try:
         torch = backend.load_torch()
         be = backend.select(torch)
+        expected_backend = os.environ.get("HPL_BACKEND")
+        if expected_backend and be != expected_backend:
+            raise backend.BackendError(
+                "requested %s but the selected pixi environment loaded a %s PyTorch build"
+                % (expected_backend, be)
+            )
     except backend.BackendError as e:
         fail(str(e))
     try:

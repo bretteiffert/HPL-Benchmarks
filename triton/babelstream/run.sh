@@ -19,6 +19,12 @@ case "$backend" in
   *) echo "error: unknown backend '$backend' (valid: cuda, hip)" >&2; usage; exit 1 ;;
 esac
 
+# Do not let an NVIDIA HPC SDK shell configuration select nvc as the host
+# compiler for a HIP environment. These overrides are scoped to this launcher.
+export CC=gcc
+export CXX=g++
+export HPL_BACKEND="${backend^^}"
+
 csv=0
 for arg in "$@"; do
   case "$arg" in --csv|--csv-raw) csv=1 ;; esac
