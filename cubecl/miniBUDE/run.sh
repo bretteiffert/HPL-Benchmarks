@@ -18,13 +18,17 @@ case "$backend" in
     ;;
 esac
 
+# Cargo reads .cargo/config.toml from the working directory, not from
+# --manifest-path. Use GNU host compilers for native Rust dependencies rather
+# than any compiler injected by the NVIDIA HPC SDK.
+cd "$SCRIPT_DIR"
+export CC=gcc CXX=g++
+
 # Status lines go to stderr so `--csv` output can be redirected cleanly.
 echo "miniBUDE - CubeCL, ${backend^^}" >&2
 
 # Build first so compiler output doesn't interleave with results.
-cargo build --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
-  --no-default-features --features "$backend" >&2
+cargo build --release --no-default-features --features "$backend" >&2
 
-cargo run --quiet --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
-  --no-default-features --features "$backend" -- \
+cargo run --quiet --release --no-default-features --features "$backend" -- \
   --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 8 "$@"

@@ -23,17 +23,21 @@ SIZE_CONFIGS=(
   "33554432"
 )
 
+# Cargo reads .cargo/config.toml from the working directory, not from
+# --manifest-path. Use GNU host compilers for native Rust dependencies rather
+# than any compiler injected by the NVIDIA HPC SDK.
+cd "$SCRIPT_DIR"
+export CC=gcc CXX=g++
+
 # Status lines go to stderr so `--csv` output can be redirected cleanly.
 echo "babelstream - CubeCL, ${backend^^}" >&2
 
 # Build once up front so compiler output doesn't interleave with results.
-cargo build --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
-  --no-default-features --features "$backend" >&2
+cargo build --release --no-default-features --features "$backend" >&2
 
 csv_header_done=0
 for size in "${SIZE_CONFIGS[@]}"; do
-  out="$(cargo run --quiet --release --manifest-path "$SCRIPT_DIR/Cargo.toml" \
-    --no-default-features --features "$backend" -- \
+  out="$(cargo run --quiet --release --no-default-features --features "$backend" -- \
     -s "$size" -n 1000 "$@")"
   # In CSV modes, keep a single header row across sizes.
   if [[ " $* " == *" --csv "* || " $* " == *" --csv-raw "* ]]; then
