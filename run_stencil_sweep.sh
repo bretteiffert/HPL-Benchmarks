@@ -303,7 +303,7 @@ run_mode() {
       ordered+=("${implementations[$(( (index + offset) % ${#implementations[@]} ))]}")
     done
 
-    for precision in float16 float32 float64; do
+    for precision in float32 float64; do
       if [[ "$precision" == float16 ]]; then
         for size in "${half_sizes[@]}"; do
           if [[ "$run_mode" == summary ]]; then iterations="$half_iters"; else iterations="$raw_iters"; fi
