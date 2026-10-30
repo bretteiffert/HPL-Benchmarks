@@ -2,7 +2,7 @@
 
 ## Setup
 
-Install Rust 1.95 or newer, the vendor toolkit and driver required by the selected backend, and set vendor path.
+Install Rust, the vendor toolkit and driver required by the selected backend, and set vendor path.
 
 ```bash
 export CUDA_PATH=[path-to-cuda]

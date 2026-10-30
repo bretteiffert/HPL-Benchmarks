@@ -2,8 +2,7 @@
 //! check, so the launch grid must cover the arrays exactly
 //! (array size = cube count × block size).
 //!
-//! Kernels that take a scalar `F` argument also need `F: LaunchArg` (CubeCL
-//! 0.11 implements it per float type rather than as a blanket impl).
+//! Kernels use the CubeCL 0.10 `Array` and `SharedMemory` container APIs.
 
 use cubecl::prelude::*;
 
@@ -19,10 +18,10 @@ pub fn mad_op<F: Float>(a: F, b: F, c: F, #[comptime] use_fma: bool) -> F {
 }
 
 #[cube(launch_unchecked)]
-pub fn init_kernel<F: Float + LaunchArg>(
-    a: &mut [F],
-    b: &mut [F],
-    c: &mut [F],
+pub fn init_kernel<F: Float + ScalarArgSettings>(
+    a: &mut Array<F>,
+    b: &mut Array<F>,
+    c: &mut Array<F>,
     init_a: F,
     init_b: F,
     init_c: F,
@@ -34,28 +33,28 @@ pub fn init_kernel<F: Float + LaunchArg>(
 }
 
 #[cube(launch_unchecked)]
-pub fn copy_kernel<F: Float>(a: &[F], c: &mut [F]) {
+pub fn copy_kernel<F: Float>(a: &Array<F>, c: &mut Array<F>) {
     let i = ABSOLUTE_POS;
     c[i] = a[i];
 }
 
 #[cube(launch_unchecked)]
-pub fn mul_kernel<F: Float + LaunchArg>(b: &mut [F], c: &[F], scalar: F) {
+pub fn mul_kernel<F: Float + ScalarArgSettings>(b: &mut Array<F>, c: &Array<F>, scalar: F) {
     let i = ABSOLUTE_POS;
     b[i] = scalar * c[i];
 }
 
 #[cube(launch_unchecked)]
-pub fn add_kernel<F: Float>(a: &[F], b: &[F], c: &mut [F]) {
+pub fn add_kernel<F: Float>(a: &Array<F>, b: &Array<F>, c: &mut Array<F>) {
     let i = ABSOLUTE_POS;
     c[i] = a[i] + b[i];
 }
 
 #[cube(launch_unchecked)]
-pub fn triad_kernel<F: Float + LaunchArg>(
-    a: &mut [F],
-    b: &[F],
-    c: &[F],
+pub fn triad_kernel<F: Float + ScalarArgSettings>(
+    a: &mut Array<F>,
+    b: &Array<F>,
+    c: &Array<F>,
     scalar: F,
     #[comptime] use_fma: bool,
 ) {
@@ -66,15 +65,15 @@ pub fn triad_kernel<F: Float + LaunchArg>(
 /// Pinned 256-unit grid-stride dot product with a shared-memory tree reduction.
 #[cube(launch_unchecked)]
 pub fn dot_kernel<F: Float>(
-    a: &[F],
-    b: &[F],
-    partial: &mut [F],
+    a: &Array<F>,
+    b: &Array<F>,
+    partial: &mut Array<F>,
     array_size: usize,
     #[comptime] use_fma: bool,
 ) {
     let mut acc = F::new(0.0f32);
 
-    // No type annotations on locals: the 0.11 macro rejects them on `let mut`.
+    // Keep inferred local types compatible with the CubeCL macro frontend.
     let stride = (CUBE_DIM as usize) * CUBE_COUNT;
     let mut i = ABSOLUTE_POS;
     while i < array_size {
@@ -82,7 +81,7 @@ pub fn dot_kernel<F: Float>(
         i += stride;
     }
 
-    let mut shared = Shared::<[F]>::new_slice(256usize);
+    let mut shared = SharedMemory::<F>::new(256usize);
     shared[UNIT_POS as usize] = acc;
     sync_cube();
 

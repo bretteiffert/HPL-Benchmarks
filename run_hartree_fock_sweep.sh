@@ -30,9 +30,14 @@ Campaign:
   Inputs:    he16 / he32 / he64 / he128 / he256
   Iterations: 10 per input
 
+Files:
+  hartree-fock-BACKEND-summary-energy.csv
+  hartree-fock-BACKEND-raw-no-energy.csv
+
 Each implementation writes a separate CSV and log under
 runs/rep-NN/{summary,raw-no-energy}. Existing campaign output is never
-overwritten.
+overwritten. Campaign-level summary and raw CSV files are also written at the
+top of the output directory.
 EOF
 }
 
@@ -81,8 +86,18 @@ fi
 
 info_file="$output_dir/campaign-info.txt"
 failures_file="$output_dir/failures.log"
+summary_file="$output_dir/hartree-fock-${backend}-summary-energy.csv"
+raw_file="$output_dir/hartree-fock-${backend}-raw-no-energy.csv"
+SUMMARY_HEADER="implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,num_times,routine,min_s,max_s,avg_s,e2_energy,rel_err_ref,energy_j_per_iter,avg_power_w"
+RAW_HEADER="implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,routine,iteration,time_s"
 [[ ! -e "$info_file" && ! -e "$failures_file" && ! -e "$output_dir/runs" ]] || \
   die "campaign output already exists under $output_dir (choose another --output-dir)"
+if [[ "$mode" == summary || "$mode" == both ]]; then
+  [[ ! -e "$summary_file" ]] || die "output already exists: $summary_file"
+fi
+if [[ "$mode" == raw || "$mode" == both ]]; then
+  [[ ! -e "$raw_file" ]] || die "output already exists: $raw_file"
+fi
 if [[ "$build_energy" -eq 1 && -e "$output_dir/energy-build.log" ]]; then
   die "output already exists: $output_dir/energy-build.log"
 fi
@@ -117,6 +132,13 @@ if [[ "$build_energy" -eq 1 ]]; then
   fi
 fi
 
+if [[ "$mode" == summary || "$mode" == both ]]; then
+  printf '%s,repetition\n' "$SUMMARY_HEADER" > "$summary_file"
+fi
+if [[ "$mode" == raw || "$mode" == both ]]; then
+  printf '%s,repetition\n' "$RAW_HEADER" > "$raw_file"
+fi
+
 implementations=(native triton mojo cubecl kernelabstractions)
 case "$precision" in
   32) precisions=(float32) ;;
@@ -125,20 +147,23 @@ case "$precision" in
 esac
 failure_count=0
 
-valid_csv() {
-  local csv_file="$1" actual_header line_count
-  IFS= read -r actual_header < "$csv_file" || return 1
-  case "$actual_header" in
-    implementation,backend,device,precision,*) ;;
-    *) return 1 ;;
-  esac
-  line_count=$(wc -l < "$csv_file")
-  [[ "$line_count" -ge 2 ]]
+append_rows() {
+  local source_file="$1" destination_file="$2" expected_header="$3" repetition="$4"
+  local actual_header line row_count=0
+  IFS= read -r actual_header < "$source_file" || return 1
+  [[ "$actual_header" == "$expected_header" ]] || return 1
+  while IFS= read -r line; do
+    if [[ -n "$line" ]]; then
+      printf '%s,%s\n' "$line" "$repetition" >> "$destination_file"
+      row_count=$((row_count + 1))
+    fi
+  done < <(tail -n +2 "$source_file")
+  [[ "$row_count" -gt 0 ]]
 }
 
 run_one() {
   local run_mode="$1" repetition="$2" implementation="$3" run_precision="$4"
-  local mode_dir csv_file log_file precision_flag iterations
+  local mode_dir csv_file log_file precision_flag iterations aggregate expected_header
   local -a command args
 
   case "$run_precision" in
@@ -151,10 +176,14 @@ run_one() {
     mode_dir="summary"
     iterations="$summary_iters"
     args=("$precision_flag" -n "$iterations" --device "$device" --csv)
+    aggregate="$summary_file"
+    expected_header="$SUMMARY_HEADER"
   else
     mode_dir="raw-no-energy"
     iterations="$raw_iters"
     args=("$precision_flag" -n "$iterations" --device "$device" --csv-raw --no-energy)
+    aggregate="$raw_file"
+    expected_header="$RAW_HEADER"
   fi
 
   mode_dir="$output_dir/runs/rep-$(printf '%02d' "$repetition")/$mode_dir"
@@ -177,7 +206,7 @@ run_one() {
   if ! "${command[@]}" "${args[@]}" > "$csv_file" 2>> "$log_file"; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=command_failed log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
-  elif ! valid_csv "$csv_file"; then
+  elif ! append_rows "$csv_file" "$aggregate" "$expected_header" "$repetition"; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=invalid_csv log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
   fi

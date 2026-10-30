@@ -3,7 +3,7 @@
 //!
 //! - Precision: float64 by default, float32 with `--float`, float16 with `--half`.
 //! - Timing: each kernel runs under `Client::profile()`. On the CUDA and HIP
-//!   runtimes of CubeCL 0.11 this uses device events; the method actually used
+//!   runtimes of CubeCL 0.10 this uses device events; the method actually used
 //!   is printed in the header. Dot timings include reading back the per-group
 //!   partial sums.
 //! - Dot grid: 4 × the SM/CU count queried from the device, else a warned
@@ -36,10 +36,8 @@ fn list_devices() {
     if devices.is_empty() {
         println!("  none found");
     }
-    for (i, device) in devices.iter().enumerate() {
-        let name = device.client().properties().identity.name.trim().to_string();
-        let name = if name.is_empty() { backend::placeholder_name(i) } else { name };
-        println!("  {}: {}", i, name);
+    for (i, _device) in devices.iter().enumerate() {
+        println!("  {}: {}", i, backend::placeholder_name(i));
     }
 }
 
@@ -168,12 +166,12 @@ fn run<F: Elem>(args: &Args, use_fma: bool) {
     let n = args.array_size as usize;
     let bpe = F::elem_size();
 
-    let client = backend::device(args.device_index)
-        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)))
-        .client();
+    let device = backend::device(args.device_index)
+        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)));
+    let client = backend::client(&device);
     let props = client.properties();
     let hw = &props.hardware;
-    if !props.supports_type(F::elem_type_native()) {
+    if !props.supports_type(F::as_type_native().expect("native element type")) {
         fail(&format!("{} is not supported on this device", F::PRECISION));
     }
     validate_block_size(args, hw.max_units_per_cube);

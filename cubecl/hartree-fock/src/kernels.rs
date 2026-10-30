@@ -1,12 +1,6 @@
 //! Two-electron Fock-build kernel: one unit per (ij|kl) integral quartet.
 //!
-//! Changes from the 0.10 version are only what CubeCL 0.11 requires:
-//! - buffers are slices (`&[F]`), and the Fock matrix is `&[Atomic<F>]`
-//!   (atomics have interior mutability, so the slice is not `&mut`);
-//! - `F: LaunchArg` because the kernel takes scalar `F` arguments;
-//! - `let mut` bindings carry no type annotation (the 0.11 macro rejects an
-//!   annotated `let mut` with a constant initializer, so all are left
-//!   unannotated). Immutable bindings keep their annotations.
+//! CubeCL 0.10 kernels use `Array` launch arguments.
 
 use cubecl::prelude::*;
 
@@ -19,13 +13,13 @@ fn idx_sqrt(x: u64) -> u64 {
 }
 
 #[cube(launch_unchecked)]
-pub fn hartree_fock_kernel<F: Float + LaunchArg>(
-    geom: &[F],
-    xpnt: &[F],
-    coef: &[F],
-    dens: &[F],
-    schwarz: &[F],
-    fock: &[Atomic<F>],
+pub fn hartree_fock_kernel<F: Float + ScalarArgSettings>(
+    geom: &Array<F>,
+    xpnt: &Array<F>,
+    coef: &Array<F>,
+    dens: &Array<F>,
+    schwarz: &Array<F>,
+    fock: &Array<Atomic<F>>,
     nnnn: u64,
     ngauss: u32,
     natoms: u32,

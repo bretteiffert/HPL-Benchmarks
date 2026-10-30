@@ -1,7 +1,7 @@
 //! Device buffers and timed kernel launches.
 
 use crate::kernels::*;
-use cubecl::client::Client;
+use crate::backend::{BackendRuntime, Client};
 use cubecl::prelude::*;
 use cubecl::server::Handle;
 
@@ -10,9 +10,8 @@ pub const START_B: f64 = 0.2;
 pub const START_C: f64 = 0.0;
 pub const START_SCALAR: f64 = 0.4;
 
-/// `LaunchArg<RuntimeArg = Self>` lets generic code pass an `F` value as a
-/// kernel scalar; f16, f32 and f64 all implement it that way.
-pub trait Elem: Float + CubeElement + LaunchArg<RuntimeArg = Self> + Copy + PartialOrd + 'static {
+/// Device element type used by the benchmark kernels and scalar launch args.
+pub trait Elem: Float + CubeElement + ScalarArgSettings + Copy + PartialOrd + 'static {
     const PRECISION: &'static str;
     fn from_f64(v: f64) -> Self;
     fn to_host_f64(self) -> f64;
@@ -106,8 +105,8 @@ struct Buffers {
 
 /// # Safety
 /// `handle` must hold at least `n` elements of the kernel's element type.
-unsafe fn arr(handle: Handle, n: usize) -> BufferArg {
-    unsafe { BufferArg::from_raw_parts(handle, n) }
+unsafe fn arr(handle: Handle, n: usize) -> ArrayArg<BackendRuntime> {
+    unsafe { ArrayArg::from_raw_parts(handle, n) }
 }
 
 pub struct CubeStream<F: Elem> {
@@ -182,7 +181,6 @@ impl<F: Elem> CubeStream<F> {
         // `None` means the device recorded no measurement for this window; a
         // zero would silently win every min(), so treat it as a hard error.
         let secs = cubecl::future::block_on(profile.resolve())
-            .unwrap_or_else(|| panic!("{} kernel produced no timing measurement", name))
             .duration()
             .as_secs_f64();
         (secs, out)
@@ -192,7 +190,7 @@ impl<F: Elem> CubeStream<F> {
         let (a, b, c, n) = (buf.a.clone(), buf.b.clone(), buf.c.clone(), buf.n);
         let (grid, dim) = (buf.grid.clone(), self.cube_dim());
         self.timed("init", move |client| unsafe {
-            init_kernel::launch_unchecked::<F>(
+            init_kernel::launch_unchecked::<F, BackendRuntime>(
                 client,
                 grid,
                 dim,
@@ -211,7 +209,7 @@ impl<F: Elem> CubeStream<F> {
         let (a, c, n) = (buf.a.clone(), buf.c.clone(), buf.n);
         let (grid, dim) = (buf.grid.clone(), self.cube_dim());
         self.timed("copy", move |client| unsafe {
-            copy_kernel::launch_unchecked::<F>(client, grid, dim, arr(a, n), arr(c, n));
+            copy_kernel::launch_unchecked::<F, BackendRuntime>(client, grid, dim, arr(a, n), arr(c, n));
         })
         .0
     }
@@ -220,7 +218,7 @@ impl<F: Elem> CubeStream<F> {
         let (b, c, n) = (buf.b.clone(), buf.c.clone(), buf.n);
         let (grid, dim) = (buf.grid.clone(), self.cube_dim());
         self.timed("mul", move |client| unsafe {
-            mul_kernel::launch_unchecked::<F>(
+            mul_kernel::launch_unchecked::<F, BackendRuntime>(
                 client,
                 grid,
                 dim,
@@ -236,7 +234,7 @@ impl<F: Elem> CubeStream<F> {
         let (a, b, c, n) = (buf.a.clone(), buf.b.clone(), buf.c.clone(), buf.n);
         let (grid, dim) = (buf.grid.clone(), self.cube_dim());
         self.timed("add", move |client| unsafe {
-            add_kernel::launch_unchecked::<F>(client, grid, dim, arr(a, n), arr(b, n), arr(c, n));
+            add_kernel::launch_unchecked::<F, BackendRuntime>(client, grid, dim, arr(a, n), arr(b, n), arr(c, n));
         })
         .0
     }
@@ -245,7 +243,7 @@ impl<F: Elem> CubeStream<F> {
         let (a, b, c, n) = (buf.a.clone(), buf.b.clone(), buf.c.clone(), buf.n);
         let (grid, dim, use_fma) = (buf.grid.clone(), self.cube_dim(), self.use_fma);
         self.timed("triad", move |client| unsafe {
-            triad_kernel::launch_unchecked::<F>(
+            triad_kernel::launch_unchecked::<F, BackendRuntime>(
                 client,
                 grid,
                 dim,
@@ -267,7 +265,7 @@ impl<F: Elem> CubeStream<F> {
         let groups = self.dot_groups;
         let (t, bytes) = self.timed("dot", move |client| {
             unsafe {
-                dot_kernel::launch_unchecked::<F>(
+                dot_kernel::launch_unchecked::<F, BackendRuntime>(
                     client,
                     CubeCount::Static(groups, 1, 1),
                     dim,

@@ -1,9 +1,7 @@
 //! Seven-point Laplacian kernels on an `nx × ny × nz` grid stored x-fastest
 //! (`pos = i + nx * (j + ny * k)`).
 //!
-//! Kernels that take a scalar `F` argument need `F: LaunchArg` (CubeCL 0.11
-//! implements it per float type rather than as a blanket impl), and locals are
-//! left unannotated because the 0.11 macro rejects type annotations on `let mut`.
+//! Kernels use the CubeCL 0.10 `Array` container API.
 
 use cubecl::prelude::*;
 
@@ -11,8 +9,8 @@ use cubecl::prelude::*;
 /// exactly 3 everywhere, so the second-difference stencil reproduces it exactly
 /// up to rounding.
 #[cube(launch_unchecked)]
-pub fn test_function_kernel<F: Float + LaunchArg>(
-    u: &mut [F],
+pub fn test_function_kernel<F: Float + ScalarArgSettings>(
+    u: &mut Array<F>,
     nx: u32,
     ny: u32,
     nz: u32,
@@ -40,9 +38,9 @@ pub fn test_function_kernel<F: Float + LaunchArg>(
 
 /// `f = ∇²u` on interior points; boundary points of `f` are left untouched.
 #[cube(launch_unchecked)]
-pub fn laplacian_kernel<F: Float + LaunchArg>(
-    f: &mut [F],
-    u: &[F],
+pub fn laplacian_kernel<F: Float + ScalarArgSettings>(
+    f: &mut Array<F>,
+    u: &Array<F>,
     nx: u32,
     ny: u32,
     nz: u32,

@@ -1,6 +1,6 @@
 //! Build-time backend selection plus device metadata.
 //!
-//! CubeCL 0.11 reports the device name (`properties().identity.name`) and the
+//! CubeCL 0.10 does not report the device name; the
 //! SM/CU count for both backends, and enumerates devices. The one thing it does
 //! not report is the driver version, so that alone is queried from the vendor
 //! driver library, loaded at runtime. The query is best-effort: on any failure
@@ -11,9 +11,18 @@ compile_error!("Enable exactly one backend feature: `cuda` or `hip`, not both.")
 #[cfg(not(any(feature = "cuda", feature = "hip")))]
 compile_error!("Enable a backend feature: `--features cuda` or `--features hip`.");
 
-use cubecl::client::Client;
-use cubecl::Device;
+use cubecl::prelude::{ComputeClient, Runtime};
 use libloading::Library;
+
+#[cfg(feature = "cuda")]
+pub type BackendRuntime = cubecl::cuda::CudaRuntime;
+#[cfg(feature = "cuda")]
+pub type BackendDevice = cubecl::cuda::CudaDevice;
+#[cfg(all(feature = "hip", not(feature = "cuda")))]
+pub type BackendRuntime = cubecl::hip::HipRuntime;
+#[cfg(all(feature = "hip", not(feature = "cuda")))]
+pub type BackendDevice = cubecl::hip::AmdDevice;
+pub type Client = ComputeClient<BackendRuntime>;
 
 #[cfg(feature = "cuda")]
 pub const BACKEND_LABEL: &str = "CUDA";
@@ -21,18 +30,24 @@ pub const BACKEND_LABEL: &str = "CUDA";
 pub const BACKEND_LABEL: &str = "HIP";
 
 /// The device at `index`, or an error naming how many this machine has.
-pub fn device(index: usize) -> Result<Device, String> {
+pub fn device(index: usize) -> Result<BackendDevice, String> {
+    let count = vendor::device_count().unwrap_or(0);
+    if index >= count {
+        return Err(format!("device index {} out of range ({} device(s) available)", index, count));
+    }
     #[cfg(feature = "cuda")]
-    let device = Device::cuda(index);
+    let device = BackendDevice::new(index);
     #[cfg(all(feature = "hip", not(feature = "cuda")))]
-    let device = Device::rocm(index);
-    device.map_err(|e| e.to_string())
+    let device = BackendDevice::new(index);
+    Ok(device)
 }
 
 /// Every device this backend can see, in index order.
-pub fn devices() -> Vec<Device> {
+pub fn devices() -> Vec<BackendDevice> {
     (0..).map_while(|i| device(i).ok()).collect()
 }
+
+pub fn client(device: &BackendDevice) -> Client { BackendRuntime::client(device) }
 
 /// Placeholder used when the device reports no name.
 pub fn placeholder_name(index: usize) -> String {
@@ -40,19 +55,11 @@ pub fn placeholder_name(index: usize) -> String {
 }
 
 /// Device name: `GPU_NAME` override, then the device's own name, then a placeholder.
-pub fn resolve_name(index: usize, client: &Client) -> (String, Option<String>) {
+pub fn resolve_name(index: usize, _client: &Client) -> (String, Option<String>) {
     if let Ok(name) = std::env::var("GPU_NAME") {
         return (name, None);
     }
-    let name = client.properties().identity.name.trim().to_string();
-    if name.is_empty() {
-        (
-            placeholder_name(index),
-            Some("device reported no name; set GPU_NAME to label results".to_string()),
-        )
-    } else {
-        (name, None)
-    }
+    (placeholder_name(index), Some("CubeCL 0.10 does not report device names; set GPU_NAME to label results".to_string()))
 }
 
 /// Driver string: `GPU_DRIVER` override, then the driver query, then "unknown".
@@ -88,9 +95,21 @@ mod vendor {
 
     type CuInitFn = unsafe extern "C" fn(u32) -> i32;
     type CuVersionFn = unsafe extern "C" fn(*mut i32) -> i32;
+    type CuCountFn = unsafe extern "C" fn(*mut i32) -> i32;
     type NvmlInitFn = unsafe extern "C" fn() -> u32;
     type NvmlDriverFn = unsafe extern "C" fn(*mut c_char, u32) -> u32;
     type NvmlShutdownFn = unsafe extern "C" fn() -> u32;
+
+    pub fn device_count() -> Option<usize> {
+        let lib = open_first(&["libcuda.so.1".into(), "libcuda.so".into()])?;
+        unsafe {
+            let init = lib.get::<CuInitFn>(c"cuInit").ok()?;
+            let count = lib.get::<CuCountFn>(c"cuDeviceGetCount").ok()?;
+            if init(0) != 0 { return None; }
+            let mut value = 0i32;
+            (count(&mut value) == 0 && value >= 0).then_some(value as usize)
+        }
+    }
 
     /// e.g. "550.54.15 (CUDA 12.4)".
     pub fn driver_version() -> Option<String> {
@@ -145,6 +164,23 @@ mod vendor {
 
     type InitFn = unsafe extern "C" fn(u32) -> i32;
     type VersionFn = unsafe extern "C" fn(*mut i32) -> i32;
+    type CountFn = unsafe extern "C" fn(*mut i32) -> i32;
+
+    pub fn device_count() -> Option<usize> {
+        let mut candidates = Vec::new();
+        for var in ["ROCM_PATH", "HIP_PATH"] {
+            if let Ok(root) = std::env::var(var) { candidates.push(format!("{}/lib/libamdhip64.so", root)); }
+        }
+        for suffix in ["", ".7", ".6", ".5"] { candidates.push(format!("libamdhip64.so{}", suffix)); }
+        let lib = open_first(&candidates)?;
+        unsafe {
+            let init = lib.get::<InitFn>(c"hipInit").ok()?;
+            let count = lib.get::<CountFn>(c"hipGetDeviceCount").ok()?;
+            if init(0) != 0 { return None; }
+            let mut value = 0i32;
+            (count(&mut value) == 0 && value >= 0).then_some(value as usize)
+        }
+    }
 
     /// e.g. "HIP 6.3.42134".
     pub fn driver_version() -> Option<String> {

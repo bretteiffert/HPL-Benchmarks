@@ -1,13 +1,12 @@
 //! Precision trait, grid geometry, device buffers and timed launches.
 
 use crate::kernels::*;
-use cubecl::client::Client;
+use crate::backend::{BackendRuntime, Client};
 use cubecl::prelude::*;
 use cubecl::server::Handle;
 
-/// `LaunchArg<RuntimeArg = Self>` lets generic code pass an `F` value as a
-/// kernel scalar; f16, f32 and f64 all implement it that way.
-pub trait Elem: Float + CubeElement + LaunchArg<RuntimeArg = Self> + Copy + 'static {
+/// Device element type used by the benchmark kernels and scalar launch args.
+pub trait Elem: Float + CubeElement + ScalarArgSettings + Copy + 'static {
     const PRECISION: &'static str;
     fn from_f64(v: f64) -> Self;
     fn to_host_f64(self) -> f64;
@@ -111,8 +110,8 @@ pub fn coefficients(h: (f64, f64, f64)) -> (f64, f64, f64, f64) {
 
 /// # Safety
 /// `handle` must hold at least `n` elements of the kernel's element type.
-unsafe fn arr(handle: Handle, n: usize) -> BufferArg {
-    unsafe { BufferArg::from_raw_parts(handle, n) }
+unsafe fn arr(handle: Handle, n: usize) -> ArrayArg<BackendRuntime> {
+    unsafe { ArrayArg::from_raw_parts(handle, n) }
 }
 
 pub struct Stencil<F: Elem> {
@@ -146,7 +145,7 @@ impl<F: Elem> Stencil<F> {
         let (hx, hy, hz) = g.spacing();
         let n = g.points();
         unsafe {
-            test_function_kernel::launch_unchecked::<F>(
+            test_function_kernel::launch_unchecked::<F, BackendRuntime>(
                 &self.client,
                 CubeCount::Static(g.nx.div_ceil(self.init_block), g.ny, g.nz),
                 CubeDim::new_1d(self.init_block),
@@ -167,7 +166,7 @@ impl<F: Elem> Stencil<F> {
         let (bx, by, bz) = geo.block;
         let (ix, iy, iz, ic) = coefficients(geo.spacing());
         unsafe {
-            laplacian_kernel::launch_unchecked::<F>(
+            laplacian_kernel::launch_unchecked::<F, BackendRuntime>(
                 client,
                 CubeCount::Static(cx, cy, cz),
                 CubeDim::new_3d(bx, by, bz),
@@ -200,7 +199,6 @@ impl<F: Elem> Stencil<F> {
         // `None` means the device recorded no measurement for this window; a
         // zero would silently win every min(), so treat it as a hard error.
         cubecl::future::block_on(profile.resolve())
-            .unwrap_or_else(|| panic!("laplacian kernel produced no timing measurement"))
             .duration()
             .as_secs_f64()
     }

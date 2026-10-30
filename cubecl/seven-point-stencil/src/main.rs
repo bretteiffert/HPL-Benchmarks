@@ -5,7 +5,7 @@
 //!   once untimed (warm-up and correctness), then times `--numtimes` runs.
 //! - Precision: float64 by default, float32 with `--float`, float16 with `--half`.
 //! - Timing: each run is profiled with `Client::profile()`; on CUDA and HIP in
-//!   CubeCL 0.11 this uses device events. The method used is in the header.
+//!   CubeCL 0.10 this uses device events. The method used is in the header.
 //! - Bandwidth uses the theoretical traffic of one Laplacian: every point except
 //!   corners and edges read once, every interior point written once.
 
@@ -39,10 +39,8 @@ fn list_devices() {
     if devices.is_empty() {
         println!("  none found");
     }
-    for (i, device) in devices.iter().enumerate() {
-        let name = device.client().properties().identity.name.trim().to_string();
-        let name = if name.is_empty() { backend::placeholder_name(i) } else { name };
-        println!("  {}: {}", i, name);
+    for (i, _device) in devices.iter().enumerate() {
+        println!("  {}: {}", i, backend::placeholder_name(i));
     }
 }
 
@@ -132,12 +130,12 @@ fn check_correctness<F: Elem>(f: &[F], geo: &Geometry) -> Correctness {
 }
 
 fn run<F: Elem>(args: &Args) {
-    let client = backend::device(args.device_index)
-        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)))
-        .client();
+    let device = backend::device(args.device_index)
+        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)));
+    let client = backend::client(&device);
     let props = client.properties();
     let hw = &props.hardware;
-    if !props.supports_type(F::elem_type_native()) {
+    if !props.supports_type(F::as_type_native().expect("native element type")) {
         fail(&format!("{} is not supported on this device", F::PRECISION));
     }
 

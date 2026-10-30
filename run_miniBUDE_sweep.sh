@@ -30,9 +30,14 @@ Campaign:
   Deck:      bm1
   Config:    PPWI 1, work-group 256, 2 warmups, 8 timed iterations
 
+Files:
+  miniBUDE-BACKEND-summary-energy.csv
+  miniBUDE-BACKEND-raw-no-energy.csv
+
 Each implementation writes a separate CSV and log under
 runs/rep-NN/{summary,raw-no-energy}. Existing campaign output is never
-overwritten.
+overwritten. Campaign-level summary and raw CSV files use a union schema;
+Triton-only tuning columns are empty for the other implementations.
 EOF
 }
 
@@ -72,6 +77,7 @@ positive_integer "$repetitions" || die "--repetitions must be an integer >= 1"
 positive_integer "$summary_iters" || die "--summary-iters must be an integer >= 1"
 positive_integer "$raw_iters" || die "--raw-iters must be an integer >= 1"
 [[ "$device" =~ ^[0-9]+$ ]] || die "--device must be a non-negative integer"
+command -v python3 >/dev/null 2>&1 || die "python3 is required to normalize miniBUDE CSV schemas"
 
 if [[ -z "$output_dir" ]]; then
   output_dir="$ROOT/results/$BENCHMARK/$backend"
@@ -81,8 +87,20 @@ fi
 
 info_file="$output_dir/campaign-info.txt"
 failures_file="$output_dir/failures.log"
+summary_file="$output_dir/miniBUDE-${backend}-summary-energy.csv"
+raw_file="$output_dir/miniBUDE-${backend}-raw-no-energy.csv"
+SUMMARY_HEADER="implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,subgroups,num_stages,warmup,iterations,min_s,max_s,avg_s,stddev_s,gflops,gfinsts,ginteractions,launch_overhead_s,context_s,energy_j_per_iter,avg_power_w,ref_l2_rel,ref_max_rel,ref_max_ulp,deck_l2_rel,deck_beyond_tol"
+SUMMARY_COMMON_HEADER="implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iterations,min_s,max_s,avg_s,stddev_s,gflops,gfinsts,ginteractions,launch_overhead_s,context_s,energy_j_per_iter,avg_power_w,ref_l2_rel,ref_max_rel,ref_max_ulp,deck_l2_rel,deck_beyond_tol"
+RAW_HEADER="implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,subgroups,num_stages,warmup,iteration,time_s"
+RAW_COMMON_HEADER="implementation,backend,device,precision,deck,natlig,natpro,nposes,ppwi,wgsize,groups,warmup,iteration,time_s"
 [[ ! -e "$info_file" && ! -e "$failures_file" && ! -e "$output_dir/runs" ]] || \
   die "campaign output already exists under $output_dir (choose another --output-dir)"
+if [[ "$mode" == summary || "$mode" == both ]]; then
+  [[ ! -e "$summary_file" ]] || die "output already exists: $summary_file"
+fi
+if [[ "$mode" == raw || "$mode" == both ]]; then
+  [[ ! -e "$raw_file" ]] || die "output already exists: $raw_file"
+fi
 if [[ "$build_energy" -eq 1 && -e "$output_dir/energy-build.log" ]]; then
   die "output already exists: $output_dir/energy-build.log"
 fi
@@ -120,6 +138,13 @@ if [[ "$build_energy" -eq 1 ]]; then
   fi
 fi
 
+if [[ "$mode" == summary || "$mode" == both ]]; then
+  printf '%s,repetition\n' "$SUMMARY_HEADER" > "$summary_file"
+fi
+if [[ "$mode" == raw || "$mode" == both ]]; then
+  printf '%s,repetition\n' "$RAW_HEADER" > "$raw_file"
+fi
+
 implementations=(native triton mojo cubecl kernelabstractions)
 case "$precision" in
   32) precisions=(float32) ;;
@@ -128,20 +153,37 @@ case "$precision" in
 esac
 failure_count=0
 
-valid_csv() {
-  local csv_file="$1" actual_header line_count
-  IFS= read -r actual_header < "$csv_file" || return 1
-  case "$actual_header" in
-    implementation,backend,device,precision,*) ;;
-    *) return 1 ;;
-  esac
-  line_count=$(wc -l < "$csv_file")
-  [[ "$line_count" -ge 2 ]]
+append_normalized_rows() {
+  local source_file="$1" destination_file="$2" union_header="$3" common_header="$4" repetition="$5"
+  python3 - "$source_file" "$destination_file" "$union_header" "$common_header" "$repetition" <<'PY'
+import csv
+import sys
+
+source, destination, union_text, common_text, repetition = sys.argv[1:]
+union = union_text.split(",")
+accepted = (union, common_text.split(","))
+
+with open(source, newline="", encoding="utf-8") as handle:
+    reader = csv.DictReader(handle)
+    if reader.fieldnames not in accepted:
+        raise SystemExit(1)
+    rows = list(reader)
+
+if not rows:
+    raise SystemExit(1)
+
+with open(destination, "a", newline="", encoding="utf-8") as handle:
+    writer = csv.DictWriter(handle, fieldnames=union + ["repetition"], lineterminator="\n")
+    for row in rows:
+        normalized = {field: row.get(field, "") for field in union}
+        normalized["repetition"] = repetition
+        writer.writerow(normalized)
+PY
 }
 
 run_one() {
   local run_mode="$1" repetition="$2" implementation="$3" run_precision="$4"
-  local mode_dir csv_file log_file precision_flag iterations
+  local mode_dir csv_file log_file precision_flag iterations aggregate union_header common_header
   local -a command args
 
   case "$run_precision" in
@@ -154,10 +196,16 @@ run_one() {
     mode_dir="summary"
     iterations="$summary_iters"
     args=("$precision_flag" -i "$iterations" --device "$device" --csv)
+    aggregate="$summary_file"
+    union_header="$SUMMARY_HEADER"
+    common_header="$SUMMARY_COMMON_HEADER"
   else
     mode_dir="raw-no-energy"
     iterations="$raw_iters"
     args=("$precision_flag" -i "$iterations" --device "$device" --csv-raw --no-energy)
+    aggregate="$raw_file"
+    union_header="$RAW_HEADER"
+    common_header="$RAW_COMMON_HEADER"
   fi
 
   mode_dir="$output_dir/runs/rep-$(printf '%02d' "$repetition")/$mode_dir"
@@ -180,7 +228,7 @@ run_one() {
   if ! "${command[@]}" "${args[@]}" > "$csv_file" 2>> "$log_file"; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=command_failed log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
-  elif ! valid_csv "$csv_file"; then
+  elif ! append_normalized_rows "$csv_file" "$aggregate" "$union_header" "$common_header" "$repetition"; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=invalid_csv log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
   fi

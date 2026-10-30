@@ -7,7 +7,7 @@
 //! - Correctness: per configuration, against that fp64 pass (float32 runs) and,
 //!   informationally, against the deck's low-precision reference energies.
 //! - Timing: each run is profiled with `Client::profile()`; on CUDA and HIP in
-//!   CubeCL 0.11 this uses device events. The method used is in the header.
+//!   CubeCL 0.10 this uses device events. The method used is in the header.
 
 mod backend;
 mod bude;
@@ -22,7 +22,7 @@ mod report;
 use backend::BACKEND_LABEL;
 use bude::{fasten, rates, Elem};
 use cli::{Args, Precision};
-use cubecl::client::Client;
+use backend::Client;
 use cubecl::prelude::*;
 use deck::Deck;
 use metrics::{compare_to_deck, compute_metrics};
@@ -40,10 +40,8 @@ fn list_devices() {
     if devices.is_empty() {
         println!("  none found");
     }
-    for (i, device) in devices.iter().enumerate() {
-        let name = device.client().properties().identity.name.trim().to_string();
-        let name = if name.is_empty() { backend::placeholder_name(i) } else { name };
-        println!("  {}: {}", i, name);
+    for (i, _device) in devices.iter().enumerate() {
+        println!("  {}: {}", i, backend::placeholder_name(i));
     }
 }
 
@@ -88,11 +86,11 @@ fn write_energies(path: &str, energies: &[f64]) {
 }
 
 fn run<F: Elem>(args: &Args, deck: &Deck) {
-    let client = backend::device(args.device_index)
-        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)))
-        .client();
+    let device = backend::device(args.device_index)
+        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)));
+    let client = backend::client(&device);
     let props = client.properties();
-    if !props.supports_type(F::elem_type_native()) {
+    if !props.supports_type(F::as_type_native().expect("native element type")) {
         fail(&format!("{} is not supported on this device", F::PRECISION));
     }
 
@@ -103,7 +101,7 @@ fn run<F: Elem>(args: &Args, deck: &Deck) {
 
     // A float32 run is compared against the same energies computed in float64.
     let mut differential = F::BITS != 64;
-    if differential && !props.supports_type(f64::elem_type_native()) {
+    if differential && !props.supports_type(f64::as_type_native().expect("native f64 type")) {
         differential = false;
         notes.push("float64 is not supported on this device, so there is no fp64 reference pass".into());
     }

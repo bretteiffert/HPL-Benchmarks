@@ -2,9 +2,7 @@
 //! It evaluates the reference interaction terms for each transform and uses CubeCL select operations for conditional expressions.
 //! Tail units are remapped for safe indexing and only in-range results are written.
 //!
-//! Changes from the 0.10 version are only what CubeCL 0.11 requires: buffer
-//! arguments are slices (`&[F]`, `&mut [F]`) instead of `Array<F>`. The math,
-//! the local `Array::new` register arrays and the unrolled loops are unchanged.
+//! CubeCL 0.10 kernels use `Array` launch arguments.
 
 use cubecl::prelude::*;
 
@@ -14,25 +12,25 @@ pub const HBTYPE_E: u32 = 69;
 #[cube(launch_unchecked)]
 #[allow(clippy::too_many_arguments)]
 pub fn fasten_main<F: Float>(
-    etotals: &mut [F],
-    prot_x: &[F],
-    prot_y: &[F],
-    prot_z: &[F],
-    prot_t: &[u32],
-    lig_x: &[F],
-    lig_y: &[F],
-    lig_z: &[F],
-    lig_t: &[u32],
-    t0: &[F],
-    t1: &[F],
-    t2: &[F],
-    t3: &[F],
-    t4: &[F],
-    t5: &[F],
-    ff_hbtype: &[u32],
-    ff_radius: &[F],
-    ff_hphb: &[F],
-    ff_elsc: &[F],
+    etotals: &mut Array<F>,
+    prot_x: &Array<F>,
+    prot_y: &Array<F>,
+    prot_z: &Array<F>,
+    prot_t: &Array<u32>,
+    lig_x: &Array<F>,
+    lig_y: &Array<F>,
+    lig_z: &Array<F>,
+    lig_t: &Array<u32>,
+    t0: &Array<F>,
+    t1: &Array<F>,
+    t2: &Array<F>,
+    t3: &Array<F>,
+    t4: &Array<F>,
+    t5: &Array<F>,
+    ff_hbtype: &Array<u32>,
+    ff_radius: &Array<F>,
+    ff_hphb: &Array<F>,
+    ff_elsc: &Array<F>,
     natlig: u32,
     natpro: u32,
     num_transforms: u32,

@@ -10,7 +10,7 @@
 //!   Fock build is compared against it up to `--max-check-atoms` atoms (it is
 //!   O(natoms⁴)), or always with `--check`.
 //! - Timing: each run is profiled with `Client::profile()`; on CUDA and HIP in
-//!   CubeCL 0.11 this uses device events. The method used is in the header.
+//!   CubeCL 0.10 this uses device events. The method used is in the header.
 
 mod backend;
 mod cli;
@@ -21,8 +21,9 @@ mod report;
 
 use backend::BACKEND_LABEL;
 use cli::{Args, Check, Precision};
-use cubecl::client::Client;
+use backend::{BackendRuntime, Client};
 use cubecl::features::AtomicUsage;
+use cubecl::ir::StorageType;
 use cubecl::prelude::*;
 use energy::EnergyProfiler;
 use hf::{Consts, Problem, Real};
@@ -30,10 +31,9 @@ use kernels::hartree_fock_kernel;
 use report::{Correctness, EnergyReport, Meta, ReferenceCheck, Routine, RunReport};
 use std::time::Instant;
 
-/// Device element types this benchmark runs in. `LaunchArg<RuntimeArg = Self>`
-/// lets generic code pass an `F` value as a kernel scalar.
-trait Elem: Float + CubeElement + LaunchArg<RuntimeArg = Self> + Real {}
-impl<T: Float + CubeElement + LaunchArg<RuntimeArg = T> + Real> Elem for T {}
+/// Device element types this benchmark runs in.
+trait Elem: Float + CubeElement + ScalarArgSettings + Real {}
+impl<T: Float + CubeElement + ScalarArgSettings + Real> Elem for T {}
 
 fn fail(msg: &str) -> ! {
     eprintln!("error: {}", msg);
@@ -46,20 +46,19 @@ fn list_devices() {
     if devices.is_empty() {
         println!("  none found");
     }
-    for (i, device) in devices.iter().enumerate() {
-        let name = device.client().properties().identity.name.trim().to_string();
-        let name = if name.is_empty() { backend::placeholder_name(i) } else { name };
-        println!("  {}: {}", i, name);
+    for (i, _device) in devices.iter().enumerate() {
+        println!("  {}: {}", i, backend::placeholder_name(i));
     }
 }
 
 /// Fails unless the device supports `F` and atomic adds on it.
 fn validate_device<F: Elem>(client: &Client) {
     let props = client.properties();
-    if !props.supports_type(F::elem_type_native()) {
+    let native = F::as_type_native().expect("native element type");
+    if !props.supports_type(native) {
         fail(&format!("{} is not supported on this device", F::NAME));
     }
-    let atomic = Type::atomic(F::elem_type_native());
+    let atomic = Type::new(StorageType::Atomic(native.elem_type()));
     if !props.atomic_type_usage(atomic).contains(AtomicUsage::Add) {
         fail(&format!(
             "this device does not support atomic add on {}, which the Fock build needs",
@@ -150,9 +149,9 @@ fn run<F: Elem>(args: &Args) {
     let nn = p.pairs();
     let nnnn = p.quartets();
 
-    let client = backend::device(args.device_index)
-        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)))
-        .client();
+    let device = backend::device(args.device_index)
+        .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)));
+    let client = backend::client(&device);
     validate_device::<F>(&client);
     let n_blks = validate_launch(nnnn, args.block_size, &client);
 
@@ -199,16 +198,16 @@ fn run<F: Elem>(args: &Args) {
     let (dtol, rcut, sqrtpi2) = (c.dtol, c.rcut, c.sqrtpi2_dev);
     let block_size = args.block_size;
     let launch = move |client: &Client| unsafe {
-        hartree_fock_kernel::launch_unchecked::<F>(
+        hartree_fock_kernel::launch_unchecked::<F, BackendRuntime>(
             client,
             CubeCount::Static(n_blks, 1, 1),
             CubeDim::new_1d(block_size),
-            BufferArg::from_raw_parts(d_geom.clone(), 3 * natoms),
-            BufferArg::from_raw_parts(d_xpnt.clone(), ngauss),
-            BufferArg::from_raw_parts(d_coef.clone(), ngauss),
-            BufferArg::from_raw_parts(d_dens.clone(), nsq),
-            BufferArg::from_raw_parts(d_schwarz.clone(), nn + 1),
-            BufferArg::from_raw_parts(d_fock.clone(), nsq),
+            ArrayArg::from_raw_parts(d_geom.clone(), 3 * natoms),
+            ArrayArg::from_raw_parts(d_xpnt.clone(), ngauss),
+            ArrayArg::from_raw_parts(d_coef.clone(), ngauss),
+            ArrayArg::from_raw_parts(d_dens.clone(), nsq),
+            ArrayArg::from_raw_parts(d_schwarz.clone(), nn + 1),
+            ArrayArg::from_raw_parts(d_fock.clone(), nsq),
             nnnn,
             ngauss as u32,
             natoms as u32,
@@ -274,7 +273,6 @@ fn run<F: Elem>(args: &Args) {
         // `None` means the device recorded no measurement for this window; a
         // zero would silently win every min(), so treat it as a hard error.
         let secs = cubecl::future::block_on(profile.resolve())
-            .unwrap_or_else(|| panic!("Fock build kernel produced no timing measurement"))
             .duration()
             .as_secs_f64();
         fock.times.push(secs);
