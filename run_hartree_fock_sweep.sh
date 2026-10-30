@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the common FP32 Hartree-Fock campaign across every implementation.
+# Run the common Hartree-Fock precision campaign across every implementation.
 
 set -uo pipefail
 
@@ -16,14 +16,17 @@ Required:
 
 Options:
   --mode summary|raw|both  Output campaign to run (default: both)
+  --precision 32|64|both   Precision campaign to run (default: both)
   --repetitions N          Independent repetitions (default: 3)
   --output-dir PATH        Result directory (default: results/hartree-fock/BACKEND)
+  --summary-iters N        Summary iterations per input (default: 10)
+  --raw-iters N            Raw iterations per input (default: 10)
   --device N               GPU device index (default: 0)
   --skip-energy-build      Use the existing dependencies/libkernelenergy.so
   -h, --help               Show this help
 
 Campaign:
-  Precision: FP32
+  Precisions: FP32 and FP64 by default
   Inputs:    he16 / he32 / he64 / he128 / he256
   Iterations: 10 per input
 
@@ -38,17 +41,23 @@ positive_integer() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
 
 backend=""
 mode="both"
+precision="both"
 repetitions=3
 output_dir=""
 device=0
 build_energy=1
+summary_iters=10
+raw_iters=10
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --backend) [[ $# -ge 2 ]] || die "--backend needs cuda or hip"; backend="$2"; shift 2 ;;
     --mode) [[ $# -ge 2 ]] || die "--mode needs summary, raw, or both"; mode="$2"; shift 2 ;;
+    --precision) [[ $# -ge 2 ]] || die "--precision needs 32, 64, or both"; precision="$2"; shift 2 ;;
     --repetitions) [[ $# -ge 2 ]] || die "--repetitions needs a value"; repetitions="$2"; shift 2 ;;
     --output-dir) [[ $# -ge 2 ]] || die "--output-dir needs a path"; output_dir="$2"; shift 2 ;;
+    --summary-iters) [[ $# -ge 2 ]] || die "--summary-iters needs a value"; summary_iters="$2"; shift 2 ;;
+    --raw-iters) [[ $# -ge 2 ]] || die "--raw-iters needs a value"; raw_iters="$2"; shift 2 ;;
     --device) [[ $# -ge 2 ]] || die "--device needs a value"; device="$2"; shift 2 ;;
     --skip-energy-build) build_energy=0; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -58,7 +67,10 @@ done
 
 case "$backend" in cuda|hip) ;; "") die "--backend is required (cuda or hip)" ;; *) die "unknown backend '$backend' (expected cuda or hip)" ;; esac
 case "$mode" in summary|raw|both) ;; *) die "unknown mode '$mode' (expected summary, raw, or both)" ;; esac
+case "$precision" in 32|64|both) ;; *) die "unknown precision '$precision' (expected 32, 64, or both)" ;; esac
 positive_integer "$repetitions" || die "--repetitions must be an integer >= 1"
+positive_integer "$summary_iters" || die "--summary-iters must be an integer >= 1"
+positive_integer "$raw_iters" || die "--raw-iters must be an integer >= 1"
 [[ "$device" =~ ^[0-9]+$ ]] || die "--device must be a non-negative integer"
 
 if [[ -z "$output_dir" ]]; then
@@ -83,11 +95,12 @@ mkdir -p "$output_dir/runs"
   echo "benchmark=$BENCHMARK"
   echo "backend=$backend"
   echo "mode=$mode"
+  echo "precision=$precision"
   echo "repetitions=$repetitions"
   echo "device=$device"
-  echo "precision=float32"
   echo "inputs=he16,he32,he64,he128,he256"
-  echo "iterations=10"
+  echo "summary_iters=$summary_iters"
+  echo "raw_iters=$raw_iters"
   if command -v git >/dev/null 2>&1; then
     echo "git_revision=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
     echo "git_status_begin"
@@ -105,6 +118,11 @@ if [[ "$build_energy" -eq 1 ]]; then
 fi
 
 implementations=(native triton mojo cubecl kernelabstractions)
+case "$precision" in
+  32) precisions=(float32) ;;
+  64) precisions=(float64) ;;
+  both) precisions=(float32 float64) ;;
+esac
 failure_count=0
 
 valid_csv() {
@@ -119,22 +137,30 @@ valid_csv() {
 }
 
 run_one() {
-  local run_mode="$1" repetition="$2" implementation="$3"
-  local mode_dir csv_file log_file
+  local run_mode="$1" repetition="$2" implementation="$3" run_precision="$4"
+  local mode_dir csv_file log_file precision_flag iterations
   local -a command args
+
+  case "$run_precision" in
+    float32) precision_flag=--float ;;
+    float64) precision_flag=--double ;;
+    *) die "internal error: unknown precision '$run_precision'" ;;
+  esac
 
   if [[ "$run_mode" == summary ]]; then
     mode_dir="summary"
-    args=(--float --device "$device" --csv)
+    iterations="$summary_iters"
+    args=("$precision_flag" -n "$iterations" --device "$device" --csv)
   else
     mode_dir="raw-no-energy"
-    args=(--float --device "$device" --csv-raw --no-energy)
+    iterations="$raw_iters"
+    args=("$precision_flag" -n "$iterations" --device "$device" --csv-raw --no-energy)
   fi
 
   mode_dir="$output_dir/runs/rep-$(printf '%02d' "$repetition")/$mode_dir"
   mkdir -p "$mode_dir"
-  csv_file="$mode_dir/$implementation.csv"
-  log_file="$mode_dir/$implementation.log"
+  csv_file="$mode_dir/${implementation}-${run_precision}.csv"
+  log_file="$mode_dir/${implementation}-${run_precision}.log"
 
   case "$implementation" in
     native) command=(bash "$ROOT/$backend/$BENCHMARK/run.sh") ;;
@@ -145,20 +171,20 @@ run_one() {
     *) die "internal error: unknown implementation '$implementation'" ;;
   esac
 
-  printf 'rep %d: %-18s %-7s\n' "$repetition" "$implementation" "$run_mode" >&2
+  printf 'rep %d: %-18s %-7s %-7s n=%s\n' "$repetition" "$implementation" "$run_precision" "$run_mode" "$iterations" >&2
   { printf 'command:'; printf ' %q' "${command[@]}" "${args[@]}"; printf '\n'; } > "$log_file"
 
   if ! "${command[@]}" "${args[@]}" > "$csv_file" 2>> "$log_file"; then
-    echo "rep=$repetition mode=$run_mode implementation=$implementation reason=command_failed log=$log_file" >> "$failures_file"
+    echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=command_failed log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
   elif ! valid_csv "$csv_file"; then
-    echo "rep=$repetition mode=$run_mode implementation=$implementation reason=invalid_csv log=$log_file" >> "$failures_file"
+    echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=invalid_csv log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
   fi
 }
 
 run_mode() {
-  local run_mode="$1" repetition offset index implementation
+  local run_mode="$1" repetition offset index implementation run_precision
   local -a ordered
   for ((repetition = 1; repetition <= repetitions; repetition++)); do
     ordered=()
@@ -166,8 +192,10 @@ run_mode() {
     for ((index = 0; index < ${#implementations[@]}; index++)); do
       ordered+=("${implementations[$(( (index + offset) % ${#implementations[@]} ))]}")
     done
-    for implementation in "${ordered[@]}"; do
-      run_one "$run_mode" "$repetition" "$implementation"
+    for run_precision in "${precisions[@]}"; do
+      for implementation in "${ordered[@]}"; do
+        run_one "$run_mode" "$repetition" "$implementation" "$run_precision"
+      done
     done
   done
 }

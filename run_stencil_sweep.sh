@@ -17,17 +17,16 @@ Required:
 
 Options:
   --mode summary|raw|both  Output campaign to run (default: both)
+  --precision 32|64|both   Precision campaign to run (default: both)
   --repetitions N          Independent repetitions (default: 3)
   --output-dir PATH        Result directory (default: results/stencil/BACKEND)
-  --large-iters N          FP32/FP64 summary iterations (default: 100)
-  --half-iters N           FP16 summary iterations (default: 100000)
+  --large-iters N          Summary iterations (default: 100)
   --raw-iters N            Iterations in raw/no-energy runs (default: 100)
   --device N               GPU device index (default: 0)
   --skip-energy-build      Use the existing dependencies/libkernelenergy.so
   -h, --help               Show this help
 
 Sweep:
-  FP16:       8^3, 16^3, 32^3, 64^3
   FP32/FP64: 128^3, 256^3, 512^3, 1024^3
   Block:      64 x 4 x 1 (fixed by the benchmark)
 
@@ -51,10 +50,10 @@ positive_integer() {
 
 backend=""
 mode="both"
+precision="both"
 repetitions=3
 output_dir=""
 large_iters=100
-half_iters=100000
 raw_iters=100
 device=0
 build_energy=1
@@ -71,6 +70,11 @@ while [[ $# -gt 0 ]]; do
       mode="$2"
       shift 2
       ;;
+    --precision)
+      [[ $# -ge 2 ]] || die "--precision needs 32, 64, or both"
+      precision="$2"
+      shift 2
+      ;;
     --repetitions)
       [[ $# -ge 2 ]] || die "--repetitions needs a value"
       repetitions="$2"
@@ -84,11 +88,6 @@ while [[ $# -gt 0 ]]; do
     --large-iters)
       [[ $# -ge 2 ]] || die "--large-iters needs a value"
       large_iters="$2"
-      shift 2
-      ;;
-    --half-iters)
-      [[ $# -ge 2 ]] || die "--half-iters needs a value"
-      half_iters="$2"
       shift 2
       ;;
     --raw-iters)
@@ -126,9 +125,13 @@ case "$mode" in
   *) die "unknown mode '$mode' (expected summary, raw, or both)" ;;
 esac
 
+case "$precision" in
+  32|64|both) ;;
+  *) die "unknown precision '$precision' (expected 32, 64, or both)" ;;
+esac
+
 positive_integer "$repetitions" || die "--repetitions must be an integer >= 1"
 positive_integer "$large_iters" || die "--large-iters must be an integer >= 1"
-positive_integer "$half_iters" || die "--half-iters must be an integer >= 1"
 positive_integer "$raw_iters" || die "--raw-iters must be an integer >= 1"
 [[ "$device" =~ ^[0-9]+$ ]] || die "--device must be a non-negative integer"
 
@@ -160,13 +163,12 @@ mkdir -p "$output_dir/runs"
   echo "date=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   echo "backend=$backend"
   echo "mode=$mode"
+  echo "precision=$precision"
   echo "repetitions=$repetitions"
   echo "device=$device"
   echo "block=64,4,1"
-  echo "half_sizes=8,16,32,64"
   echo "large_sizes=128,256,512,1024"
   echo "large_iters=$large_iters"
-  echo "half_iters=$half_iters"
   echo "raw_iters=$raw_iters"
   if command -v git >/dev/null 2>&1; then
     echo "git_revision=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -193,8 +195,12 @@ if [[ "$mode" == raw || "$mode" == both ]]; then
 fi
 
 implementations=(native triton mojo cubecl kernelabstractions)
-half_sizes=(8 16 32 64)
 large_sizes=(128 256 512 1024)
+case "$precision" in
+  32) precisions=(float32) ;;
+  64) precisions=(float64) ;;
+  both) precisions=(float32 float64) ;;
+esac
 failure_count=0
 
 append_rows() {
@@ -230,7 +236,6 @@ run_one() {
   mkdir -p "$rep_dir"
 
   case "$precision" in
-    float16) precision_flag=--half ;;
     float32) precision_flag=--float ;;
     float64) precision_flag=--double ;;
     *) die "internal error: unknown precision '$precision'" ;;
@@ -303,22 +308,13 @@ run_mode() {
       ordered+=("${implementations[$(( (index + offset) % ${#implementations[@]} ))]}")
     done
 
-    for precision in float32 float64; do
-      if [[ "$precision" == float16 ]]; then
-        for size in "${half_sizes[@]}"; do
-          if [[ "$run_mode" == summary ]]; then iterations="$half_iters"; else iterations="$raw_iters"; fi
-          for implementation in "${ordered[@]}"; do
-            run_one "$run_mode" "$repetition" "$implementation" "$precision" "$size" "$iterations"
-          done
+    for precision in "${precisions[@]}"; do
+      for size in "${large_sizes[@]}"; do
+        if [[ "$run_mode" == summary ]]; then iterations="$large_iters"; else iterations="$raw_iters"; fi
+        for implementation in "${ordered[@]}"; do
+          run_one "$run_mode" "$repetition" "$implementation" "$precision" "$size" "$iterations"
         done
-      else
-        for size in "${large_sizes[@]}"; do
-          if [[ "$run_mode" == summary ]]; then iterations="$large_iters"; else iterations="$raw_iters"; fi
-          for implementation in "${ordered[@]}"; do
-            run_one "$run_mode" "$repetition" "$implementation" "$precision" "$size" "$iterations"
-          done
-        done
-      fi
+      done
     done
   done
 }

@@ -15,6 +15,7 @@ Required:
 
 Options:
   --mode summary|raw|both  Output campaign to run (default: both)
+  --precision 32|64|both   Precision campaign to run (default: both)
   --repetitions N          Independent repetitions (default: 3)
   --output-dir PATH        Result directory (default: results/all/BACKEND)
   --device N               GPU device index (default: 0)
@@ -32,6 +33,7 @@ positive_integer() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
 
 backend=""
 mode="both"
+precision="both"
 repetitions=3
 output_dir=""
 device=0
@@ -47,6 +49,11 @@ while [[ $# -gt 0 ]]; do
     --mode)
       [[ $# -ge 2 ]] || die "--mode needs summary, raw, or both"
       mode="$2"
+      shift 2
+      ;;
+    --precision)
+      [[ $# -ge 2 ]] || die "--precision needs 32, 64, or both"
+      precision="$2"
       shift 2
       ;;
     --repetitions)
@@ -86,6 +93,10 @@ esac
 case "$mode" in
   summary|raw|both) ;;
   *) die "unknown mode '$mode' (expected summary, raw, or both)" ;;
+esac
+case "$precision" in
+  32|64|both) ;;
+  *) die "unknown precision '$precision' (expected 32, 64, or both)" ;;
 esac
 positive_integer "$repetitions" || die "--repetitions must be an integer >= 1"
 [[ "$device" =~ ^[0-9]+$ ]] || die "--device must be a non-negative integer"
@@ -127,9 +138,9 @@ mkdir -p "$output_dir"
   echo "benchmarks=stencil,babelstream,hartree-fock,miniBUDE"
   echo "backend=$backend"
   echo "mode=$mode"
+  echo "precision=$precision"
   echo "repetitions=$repetitions"
   echo "device=$device"
-  echo "precision=float32"
   if command -v git >/dev/null 2>&1; then
     echo "git_revision=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
     echo "git_status_begin"
@@ -157,6 +168,7 @@ for index in "${!benchmarks[@]}"; do
   if ! bash "$ROOT/$script" \
       --backend "$backend" \
       --mode "$mode" \
+      --precision "$precision" \
       --repetitions "$repetitions" \
       --output-dir "$benchmark_dir" \
       --device "$device" \

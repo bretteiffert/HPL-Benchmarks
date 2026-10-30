@@ -1,0 +1,269 @@
+GPU Benchmark Comparison Run Guide
+==================================
+
+Recommended comparison campaign
+--------------------------------
+
+Use FP32 as the common precision across every implementation and benchmark.
+Run separate campaigns for:
+
+1. Energy-enabled summary results -- primary comparison.
+2. No-energy raw timings -- timing distributions and profiler-overhead sensitivity.
+3. Repeat each campaign at least 3 times into separate directories.
+
+Do not mix NVIDIA and AMD results when attributing differences to languages;
+treat each GPU platform as its own comparison.
+
+
+1. Prepare the machine
+----------------------
+
+From the repository root, build the energy library.
+
+NVIDIA:
+
+    ./dependencies/build_energy.sh --cuda
+
+AMD:
+
+    ./dependencies/build_energy.sh --hip
+
+Native CUDA/HIP and CubeCL link against this library even when using
+--no-energy, so building it first is simplest.
+
+Record the experimental environment:
+
+    git rev-parse HEAD
+    git status --short
+    nvidia-smi
+
+Or, on AMD:
+
+    rocminfo
+
+Use an idle GPU, fixed clocks if possible, and no concurrent workloads.
+
+
+2. Understand the output modes
+------------------------------
+
+--csv
+~~~~~
+
+Produces one summary row per benchmark configuration, including:
+
+- minimum, maximum, and average runtime
+- throughput/bandwidth metrics
+- correctness metrics
+- energy per iteration
+- average power
+
+Use this for the primary results:
+
+    bash cuda/babelstream/run.sh --float --csv \
+      > results.csv 2> results.log
+
+Only CSV goes to stdout. Device information, correctness details, and energy
+notes go to stderr.
+
+--csv-raw
+~~~~~~~~~
+
+Produces one row per timed iteration:
+
+    bash cuda/babelstream/run.sh --float --csv-raw \
+      > raw.csv 2> raw.log
+
+Use this for distributions, confidence intervals, outlier analysis, and plots.
+Board energy is measured over the entire timed window, not separately for each
+raw iteration.
+
+--no-energy
+~~~~~~~~~~~
+
+Disables board-power sampling:
+
+    bash cuda/babelstream/run.sh --float --csv --no-energy \
+      > no-energy.csv 2> no-energy.log
+
+The energy columns will be empty. This is useful for determining whether energy
+sampling affects runtime.
+
+--csv and --csv-raw are mutually exclusive.
+
+
+3. NVIDIA campaign
+------------------
+
+The benchmark names are:
+
+    BENCHMARKS=(
+      babelstream
+      seven-point-stencil
+      hartree-fock
+      miniBUDE
+    )
+
+Primary energy-enabled summary run:
+
+    mkdir -p results/nvidia/rep-01/summary
+
+    for b in "${BENCHMARKS[@]}"; do
+      bash "cuda/$b/run.sh" --float --csv \
+        > "results/nvidia/rep-01/summary/cuda-$b.csv" \
+        2> "results/nvidia/rep-01/summary/cuda-$b.log"
+
+      bash "triton/$b/run.sh" cuda --float --csv \
+        > "results/nvidia/rep-01/summary/triton-$b.csv" \
+        2> "results/nvidia/rep-01/summary/triton-$b.log"
+
+      bash "Mojo/$b/run.sh" cuda --float --csv \
+        > "results/nvidia/rep-01/summary/mojo-$b.csv" \
+        2> "results/nvidia/rep-01/summary/mojo-$b.log"
+
+      bash "cubecl/$b/run.sh" cuda --float --csv \
+        > "results/nvidia/rep-01/summary/cubecl-$b.csv" \
+        2> "results/nvidia/rep-01/summary/cubecl-$b.log"
+
+      bash "kernelabstractions/$b/run.sh" cuda --float --csv \
+        > "results/nvidia/rep-01/summary/ka-$b.csv" \
+        2> "results/nvidia/rep-01/summary/ka-$b.log"
+    done
+
+Raw timing run without energy:
+
+    mkdir -p results/nvidia/rep-01/raw-no-energy
+
+    for b in "${BENCHMARKS[@]}"; do
+      bash "cuda/$b/run.sh" --float --csv-raw --no-energy \
+        > "results/nvidia/rep-01/raw-no-energy/cuda-$b.csv" \
+        2> "results/nvidia/rep-01/raw-no-energy/cuda-$b.log"
+
+      bash "triton/$b/run.sh" cuda --float --csv-raw --no-energy \
+        > "results/nvidia/rep-01/raw-no-energy/triton-$b.csv" \
+        2> "results/nvidia/rep-01/raw-no-energy/triton-$b.log"
+
+      bash "Mojo/$b/run.sh" cuda --float --csv-raw --no-energy \
+        > "results/nvidia/rep-01/raw-no-energy/mojo-$b.csv" \
+        2> "results/nvidia/rep-01/raw-no-energy/mojo-$b.log"
+
+      bash "cubecl/$b/run.sh" cuda --float --csv-raw --no-energy \
+        > "results/nvidia/rep-01/raw-no-energy/cubecl-$b.csv" \
+        2> "results/nvidia/rep-01/raw-no-energy/cubecl-$b.log"
+
+      bash "kernelabstractions/$b/run.sh" cuda --float --csv-raw --no-energy \
+        > "results/nvidia/rep-01/raw-no-energy/ka-$b.csv" \
+        2> "results/nvidia/rep-01/raw-no-energy/ka-$b.log"
+    done
+
+
+4. AMD campaign
+---------------
+
+Use the same structure, replacing native CUDA with native HIP and selecting
+the HIP backend elsewhere:
+
+    mkdir -p results/amd/rep-01/summary
+
+    for b in "${BENCHMARKS[@]}"; do
+      bash "hip/$b/run.sh" --float --csv \
+        > "results/amd/rep-01/summary/hip-$b.csv" \
+        2> "results/amd/rep-01/summary/hip-$b.log"
+
+      bash "triton/$b/run.sh" hip --float --csv \
+        > "results/amd/rep-01/summary/triton-$b.csv" \
+        2> "results/amd/rep-01/summary/triton-$b.log"
+
+      bash "Mojo/$b/run.sh" hip --float --csv \
+        > "results/amd/rep-01/summary/mojo-$b.csv" \
+        2> "results/amd/rep-01/summary/mojo-$b.log"
+
+      bash "cubecl/$b/run.sh" hip --float --csv \
+        > "results/amd/rep-01/summary/cubecl-$b.csv" \
+        2> "results/amd/rep-01/summary/cubecl-$b.log"
+
+      bash "kernelabstractions/$b/run.sh" hip --float --csv \
+        > "results/amd/rep-01/summary/ka-$b.csv" \
+        2> "results/amd/rep-01/summary/ka-$b.log"
+    done
+
+For raw no-energy results, replace --csv with:
+
+    --csv-raw --no-energy
+
+
+5. Repeat the campaign
+----------------------
+
+Create independent replicate directories:
+
+    results/nvidia/rep-01/
+    results/nvidia/rep-02/
+    results/nvidia/rep-03/
+
+Prefer alternating or randomizing implementation order between replicates to
+reduce thermal and ordering bias. Do not simply run one implementation for all
+repetitions before moving to the next.
+
+Keep each repetition in a separate file rather than appending CSVs with
+repeated headers.
+
+
+6. Suggested primary and secondary datasets
+-------------------------------------------
+
+Primary paper dataset:
+
+    --float --csv
+
+Energy enabled, giving runtime, throughput, correctness, joules per iteration,
+and average power from the same run.
+
+Timing sensitivity dataset:
+
+    --float --csv-raw --no-energy
+
+Provides iteration-level timing without power sampling.
+
+Optional profiler-overhead check:
+
+    --float --csv
+    --float --csv --no-energy
+
+Compare their average kernel times. Do not combine energy-enabled and no-energy
+measurements into one statistical population.
+
+
+7. Precision policy
+-------------------
+
+For the all-language comparison, use:
+
+    --float
+
+Optional FP64 studies can use:
+
+    --double
+
+However, miniBUDE FP64 is not currently common to every implementation because
+of Mojo's FP64 sin/cos limitation. Label FP64 results as a reduced
+implementation set.
+
+For the large 1024^3 stencil campaign, avoid FP16. BabelStream may support FP16
+separately, but it should be presented as an additional precision study rather
+than part of the common FP32 comparison.
+
+
+8. Data handling
+----------------
+
+Keep:
+
+- one file per implementation, benchmark, backend, precision, and replicate
+- the associated .log
+- GPU/driver/toolchain metadata
+- the exact Git revision and working-tree diff
+
+Join CSVs by column names rather than blindly concatenating them. Some
+implementations expose additional backend-specific metadata, such as Triton
+subgroup and pipeline-stage fields.
