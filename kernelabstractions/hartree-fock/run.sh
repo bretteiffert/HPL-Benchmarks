@@ -1,52 +1,70 @@
 #!/usr/bin/env bash
-# Hartree-Fock (KernelAbstractions) sweep over he16 .. he256.
+# Hartree-Fock (KernelAbstractions) sweep: he16, he32, he64, he128, he256 at -n 10.
 #
 #   bash run.sh <cuda|hip> [extra args passed to every run]
 #
-# Example: bash run.sh cuda --float --csv > results.csv
+# Inputs are read from ../../data/hartree-fock next to this folder. Installs
+# the backend's Julia packages first (output on stderr). In --csv /
+# --csv-raw modes the CSV header is printed once for the whole sweep, so
+#   bash run.sh hip --csv > results.csv
+# gives one clean file. Status lines go to stderr. No environment variables
+# are needed.
+
 set -euo pipefail
 
-usage() { echo "usage: bash run.sh <cuda|hip> [args...]" >&2; }
-
-if [[ $# -lt 1 ]]; then
-  usage; exit 1
+usage="usage: bash run.sh <cuda|hip> [extra args passed to every run]"
+if [ "$#" -lt 1 ]; then
+  echo "error: missing backend; $usage" >&2
+  exit 1
 fi
-backend="$1"; shift
+backend="$1"
+shift
 case "$backend" in
   cuda|hip) ;;
-  *) echo "error: unknown backend '$backend' (valid: cuda, hip)" >&2; usage; exit 1 ;;
+  *) echo "error: unknown backend '$backend' (valid: cuda, hip); $usage" >&2; exit 1 ;;
 esac
 
-ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-JULIA="${JULIA_BIN:-julia}"
-PROJECT="$ROOT/env/$backend"
-DATA="$ROOT/../../data/hartree-fock"
-INPUTS=(he16 he32 he64 he128 he256)
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+INPUT_DIR="$SCRIPT_DIR/../../data/hartree-fock"
 
-for name in "${INPUTS[@]}"; do
-  if [[ ! -f "$DATA/$name" ]]; then
-    echo "error: input file not found: $DATA/$name" >&2; exit 1
-  fi
-done
+if ! command -v julia >/dev/null 2>&1; then
+  echo "error: julia not found on the PATH; install Julia 1.10 or newer" >&2
+  exit 1
+fi
+
+# Install and precompile the backend's packages (quick when already done).
+echo "hartree-fock (KernelAbstractions, $backend): installing packages" >&2
+julia --project="$SCRIPT_DIR/env/$backend" --startup-file=no \
+  -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' >&2
+
+run_one() {
+  julia --project="$SCRIPT_DIR/env/$backend" --startup-file=no --history-file=no -O3 \
+    "$SCRIPT_DIR/main.jl" "$@"
+}
 
 csv=0
-for a in "$@"; do
-  if [[ "$a" == "--csv" || "$a" == "--csv-raw" ]]; then csv=1; fi
+for arg in "$@"; do
+  case "$arg" in
+    --csv|--csv-raw) csv=1 ;;
+  esac
 done
 
-# Build once: install the pinned Manifest and precompile (output to stderr).
-echo "run.sh: preparing $PROJECT" >&2
-"$JULIA" --project="$PROJECT" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' 1>&2
+SIZE_CONFIGS=(
+  "he16"
+  "he32"
+  "he64"
+  "he128"
+  "he256"
+)
 
 first=1
-for name in "${INPUTS[@]}"; do
-  echo "run.sh: $backend, input $name" >&2
-  cmd=("$JULIA" --project="$PROJECT" -O3 --check-bounds=no "$ROOT/main.jl"
-       "$DATA/$name" -n 10 --block-size 256 "$@")
-  if [[ $csv -eq 1 && $first -eq 0 ]]; then
-    "${cmd[@]}" | tail -n +2        # CSV header only once across the sweep
+for size in "${SIZE_CONFIGS[@]}"; do
+  input="$INPUT_DIR/$size"
+  echo "hartree-fock (KernelAbstractions, $backend): $size -n 10 $*" >&2
+  if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
+    run_one "$input" -n 10 --block-size 256 "$@" | tail -n +2
   else
-    "${cmd[@]}"
+    run_one "$input" -n 10 --block-size 256 "$@"
   fi
   first=0
 done

@@ -1,226 +1,169 @@
-# main.jl — Hartree-Fock (KernelAbstractions): wiring, validation, run loop.
+# Hartree-Fock driver (Julia / KernelAbstractions): parses the command line,
+# reads the input file, validates the configuration against the device
+# limits before allocating anything, runs one untimed Fock build (checksum
+# and correctness source) and then num_times event-timed builds inside one
+# energy measurement, runs the fp64 CPU reference check outside the measured
+# window, and hands one report struct to the formatters.
 #
-#   julia --project=env/cuda -O3 --check-bounds=no main.jl INPUT [OPTIONS]
-#   julia --project=env/hip  -O3 --check-bounds=no main.jl INPUT [OPTIONS]
+# Run as  julia --project=env/<cuda|hip> main.jl INPUT [OPTIONS]; the
+# environment picks the backend.
 
-include(joinpath(@__DIR__, "backend.jl"))
-include(joinpath(@__DIR__, "energy.jl"))
-include(joinpath(@__DIR__, "cli.jl"))
-include(joinpath(@__DIR__, "kernels.jl"))
-include(joinpath(@__DIR__, "hf.jl"))
-include(joinpath(@__DIR__, "report.jl"))
+module HartreeFockKA
 
-using KernelAbstractions
-using .Backend, .BoardEnergy, .CLI, .Kernels, .HF, .Reports
+include("backend.jl")
+include("deck.jl")
+include("kernels.jl")
+include("hf.jl")
+include("cli.jl")
+include("energy.jl")
+include("report.jl")
 
-struct UserError <: Exception
-    msg::String
-end
-Base.showerror(io::IO, e::UserError) = print(io, e.msg)
+# Throws CliError naming the limit that a setting breaks.
+function validate(o::Options, dev::DeviceInfo, deck::Deck)
+    device = "device " * string(dev.index) * " (" * dev.name * ")"
 
-fail(msg) = throw(UserError(msg * " (try '--help')"))
+    if o.precision == PrecisionDouble && !fp64_atomic_add_supported(dev.index)
+        throw(CliError("float64 needs atomicAdd on double, which " * device *
+                       " does not support; use --float"))
+    end
 
-precision_type(p::Symbol) = p === :double ? Float64 : Float32
-precision_name(::Type{T}) where {T} = "float$(8 * sizeof(T))"
+    if dev.max_threads_per_block > 0 && o.block_size > dev.max_threads_per_block
+        throw(CliError("block size " * string(o.block_size) * " exceeds the " *
+                       string(dev.max_threads_per_block) * " threads per block allowed on " * device))
+    end
 
-function list_devices()
-    n = device_count()
-    n == 0 && throw(UserError("no $(backend_label()) devices found"))
-    for (i, name) in enumerate(device_names())
-        println(i - 1, ": ", name)
+    # quartet_count uses 64-bit (nn * nn + nn) / 2: safe up to 65,535 atoms.
+    if deck.natoms > 65535
+        throw(CliError("input '" * deck.path * "' has " * string(deck.natoms) *
+                       " atoms; the quartet index fits 64 bits only up to 65,535 atoms"))
+    end
+
+    grid = grid_blocks(deck.natoms, UInt32(o.block_size))
+    max_grid = dev.max_grid_x > 0 ? UInt64(dev.max_grid_x) : UInt64(2147483647)
+    if grid > max_grid
+        throw(CliError("grid of " * string(grid) * " blocks for " * string(deck.natoms) *
+                       " atoms exceeds the device maximum of " * string(max_grid) *
+                       "; the pinned block size is 256, so use a smaller input"))
     end
 end
 
-"Validate against device limits before allocating."
-function validate(a::Args, nnnn::Int)
-    max_wg = max_workgroup_size()
-    a.block_size <= max_wg ||
-        fail("block size $(a.block_size) exceeds the device maximum of $max_wg work-items per workgroup")
-    groups = cld(nnnn + 1, a.block_size)
-    max_g = max_groups()
-    groups <= max_g ||
-        fail("$(nnnn + 1) work items need $groups workgroups of $(a.block_size); the device maximum " *
-             "is $max_g (the pinned block size is 256; use a smaller input)")
-    # Float atomic add (Atomix) is native or a CAS loop on both backends for
-    # float32/float64; float16 is rejected by the CLI.
-    return nothing
-end
+function run_benchmark(o::Options)::Int
+    csv_mode = o.output != OutputText
+    text_out = csv_mode ? stderr : stdout
 
-"Check the device erf against SpecialFunctions on the host before the run."
-function check_device_erf(::Type{T}, backend) where {T}
-    xs = T[0.1, 0.5, 1.0, 2.0, 3.0]
-    d_x = KernelAbstractions.allocate(backend, T, length(xs))
-    copyto!(d_x, xs)
-    d_out = KernelAbstractions.zeros(backend, T, length(xs))
-    got = try
-        erf_selftest_kernel!(backend, length(xs))(d_out, d_x; ndrange = length(xs))
-        device_sync()
-        Array(d_out)
-    catch e
-        throw(UserError("device erf failed on $(backend_label()): $(sprint(showerror, e))"))
-    end
-    tol = 64 * eps(T)
-    for (x, g) in zip(xs, got)
-        ref = Kernels.SpecialFunctions.erf(Float64(x))
-        abs(Float64(g) - ref) <= tol * abs(ref) ||
-            throw(UserError("device erf($x) = $g differs from the host value $ref " *
-                            "beyond $(precision_name(T)) tolerance"))
-    end
-end
-
-function correctness!(r, ::Type{T}, S, h_fock::Vector{T}, a::Args) where {T}
-    erep = contract_erep(h_fock, S.h_dens, S.natoms)
-    e_inpipe = Float64(erep) * 0.5
-    r.e2_energy = e_inpipe
-    pname = precision_name(T)
-
-    run = a.check === :force || (a.check === :auto && S.natoms <= a.max_check_atoms)
-    if !run
-        push!(r.metrics, Metric("2e- energy ($pname Fock, $pname reduction)", e_inpipe, 15))
-        push!(r.check_notes, a.check === :off ?
-            "fp64 CPU reference check skipped (--no-check)" :
-            "fp64 CPU reference check skipped: $(S.natoms) atoms > --max-check-atoms " *
-            "$(a.max_check_atoms) (use --check to force)")
-        return
+    count = device_count()
+    count == 0 && error("no " * backend_name() * " devices found")
+    if o.device >= count
+        throw(CliError("device index " * string(o.device) * " is out of range (" *
+                       string(count) * (count == 1 ? " device" : " devices") * " found; see --list)"))
     end
 
-    fock_gpu = Float64.(h_fock)
-    fock_ref = fock_build_cpu(S.ngauss, S.natoms, S.geom_d, S.xpnt_d, S.coef_d, S.dens_d)
+    dev = query_device(o.device)
+    deck = read_deck(o.input)
 
-    e_gpu = energy_from_fock(fock_gpu, S.dens_d, S.natoms)
-    e_ref = energy_from_fock(fock_ref, S.dens_d, S.natoms)
-    denom = abs(e_ref) > 0.0 ? abs(e_ref) : 1.0
-    rel_loss = abs(e_gpu - e_ref) / denom
-    rel_inpipe = abs(e_inpipe - e_ref) / denom
-    r.rel_err_ref = rel_inpipe
+    validate(o, dev, deck)
 
-    maxd = 0.0; sumsq = 0.0; fscale = 0.0
-    for t in 1:S.nsq
-        d = abs(fock_gpu[t] - fock_ref[t])
-        d > maxd && (maxd = d)
-        sumsq += d * d
-        abs(fock_ref[t]) > fscale && (fscale = abs(fock_ref[t]))
+    r = Report()
+    r.implementation = "KernelAbstractions"
+    r.backend = backend_name()
+    r.device = dev.name
+    r.driver = dev.driver
+    r.precision = o.precision
+    r.sqrt_mode = o.sqrt_mode
+    r.input = deck.name
+    r.natoms = deck.natoms
+    r.ngauss = deck.ngauss
+    r.pairs = pair_count(deck.natoms)
+    r.quartets = quartet_count(deck.natoms)
+    r.block_size = UInt32(o.block_size)
+    r.grid = grid_blocks(deck.natoms, r.block_size)
+    r.num_times = o.num_times
+    r.timing = "device timestamps"
+    r.header_notes = dev.notes
+    r.fock.name = "Fock build"
+
+    meter = EnergyMeter(o.device, o.energy)
+    r.energy.enabled = enabled(meter)
+
+    print_text_header(r, text_out)
+
+    hf = make_hartree_fock(o.precision, o.sqrt_mode, deck, r.block_size)
+
+    # Untimed first build: fills the Fock matrix used by the checksum and check.
+    # (It also compiles the kernel, so compilation is never timed.)
+    first_build!(hf)
+    r.checksum = checksum(hf)
+
+    start!(meter)
+    for it in 1:o.num_times
+        push!(r.fock.times, timed_build!(hf))
     end
-    rmsd = sqrt(sumsq / S.nsq)
-    fscale == 0.0 && (fscale = 1.0)
+    stop!(meter)
+    r.energy = result(meter, o.num_times)
 
-    asym = 0.0
-    n = S.natoms
-    for i in 0:(n - 1), j in 0:(n - 1)
-        d = abs(fock_gpu[i * n + j + 1] - fock_gpu[j * n + i + 1])
-        d > asym && (asym = d)
-    end
-
-    append!(r.metrics, [
-        Metric("2e- energy ($pname Fock, $pname reduction)", e_inpipe, 15),
-        Metric("2e- energy ($pname Fock, fp64 reduction)", e_gpu, 15),
-        Metric("2e- energy (fp64 CPU reference)", e_ref, 15),
-        Metric("rel err vs reference, Fock build only", rel_loss, 6),
-        Metric("rel err vs reference, incl. reduction", rel_inpipe, 6),
-        Metric("max |F - F_ref|", maxd, 6),
-        Metric("max |F - F_ref| / max |F_ref|", maxd / fscale, 6),
-        Metric("rms |F - F_ref|", rmsd, 6),
-        Metric("max |F(i,j) - F(j,i)|", asym, 6),
-        Metric("2e- energy from symmetrized F (diagnostic)", energy_symmetrized(fock_gpu, S.dens_d, n), 15),
-    ])
-end
-
-function run_benchmark(::Type{T}, a::Args) where {T}
-    legacy = Val(a.legacy_sqrt)
-    S = host_setup(T, a.input, legacy)
-    validate(a, S.nnnn)
-
-    notes = String[]
-    name, name_note = device_name(a.device)
-    driver, driver_note = device_driver()
-    isempty(name_note) || push!(notes, name_note)
-    isempty(driver_note) || push!(notes, driver_note)
-
-    r = Report(backend = backend_label(), device = name, driver = driver,
-               precision = precision_name(T),
-               sqrt_mode = a.legacy_sqrt ? "legacy-sqrtf" : "native",
-               input = basename(a.input), natoms = S.natoms, ngauss = S.ngauss,
-               nnnn = S.nnnn, block_size = a.block_size, num_times = a.num_times,
-               timing = timing_method(), energy_enabled = a.energy, header_notes = notes)
-
-    csv_mode = a.csv || a.csv_raw
-    print_header(csv_mode ? stderr : stdout, r)
-
-    backend = ka_backend()
-    check_device_erf(T, backend)
-    d = HFDevice(backend, S, a.block_size, legacy)
-
-    # Untimed run: compiles the kernel and gives the Fock matrix that is checked
-    # (timed runs keep accumulating into it, matching the native benchmark).
-    launch_fock!(d)
-    h_fock = read_fock(d)
-
-    times = Vector{Float64}(undef, a.num_times)
-    timed_loop() = for it in 1:a.num_times
-        times[it] = timed_fock!(d)
-    end
-    if a.energy
-        r.energy = measure_energy(timed_loop, a.device, current_stream(), a.num_times)
-        r.energy.samples < 2 && push!(r.energy_notes,
-            "only $(r.energy.samples) power sample(s) in $(Reports.fixed(r.energy.time_s, 6)) s; " *
-            "energy figures are unreliable (use a larger -n or input)")
+    # fp64 CPU reference, outside the measured window.
+    if !o.check
+        r.check_skipped = "--no-check"
+    elseif !o.force_check && Int(deck.natoms) > o.max_check_atoms
+        r.check_skipped = string(deck.natoms) * " atoms > --max-check-atoms " *
+                          string(o.max_check_atoms) * "; use --check to force it"
     else
-        timed_loop()
+        r.check = check(hf)
+        r.checked = true
     end
-    device_sync()
 
-    for t in times
-        (isfinite(t) && t > 0) ||
-            throw(UserError("a kernel timing measurement is missing (got $t s)"))
-    end
-    r.times = times
-
-    correctness!(r, T, S, h_fock, a)
-
-    if a.csv
-        print_csv(stdout, r)
-        print_stderr_sections(stderr, r)
-    elseif a.csv_raw
-        print_csv_raw(stdout, r)
-        print_stderr_sections(stderr, r)
+    if o.output == OutputText
+        print_text_results(r, stdout)
+    elseif o.output == OutputCsv
+        print_csv(r, stdout)
     else
-        print_text(stdout, r)
+        print_csv_raw(r, stdout)
     end
-    return nothing
-end
+    print_text_energy(r, text_out)
+    print_text_correctness(r, text_out)
 
-function main(argv)
-    args = parse_args(argv)
-    if args.help
-        print_help()
-        return 0
-    end
-    isempty(backend_error()) || throw(UserError(backend_error()))
-    if args.list
-        list_devices()
-        return 0
-    end
-    n = device_count()
-    n == 0 && throw(UserError("no $(backend_label()) devices found"))
-    args.device < n ||
-        fail("device $(args.device) does not exist ($n device$(n == 1 ? "" : "s"); see --list)")
-    select_device!(args.device)
-    run_benchmark(precision_type(args.precision), args)
+    close_meter!(meter)
     return 0
 end
 
-const EXIT_CODE = try
-    main(ARGS)
-catch e
-    if e isa CliError
-        println(stderr, "error: ", e.msg, " (try '--help')")
-        1
-    elseif e isa UserError || e isa EnergyError || e isa InputError
-        println(stderr, "error: ", sprint(showerror, e))
-        1
-    else
-        rethrow()
+function report_error(msg::AbstractString, hint::Bool)
+    print(stderr, "error: ", msg, hint ? " (try '--help')" : "", "\n")
+    flush(stderr)
+    return 1
+end
+
+function main(args::Vector{String})::Int
+    program = "julia --project=env/" * lowercase(backend_name()) * " " * PROGRAM_FILE
+    try
+        o = parse_cli(args)
+
+        if o.help
+            print(stdout, help_text(program))
+            flush(stdout)
+            return 0
+        end
+
+        if o.list
+            devices = list_devices()
+            if isempty(devices)
+                return report_error("no " * backend_name() * " devices found", false)
+            end
+            for (i, name) in devices
+                print(stdout, i, ": ", name, "\n")
+            end
+            flush(stdout)
+            return 0
+        end
+
+        return run_benchmark(o)
+    catch e
+        e isa CliError && return report_error(e.msg, true)
+        e isa DeckError && return report_error(e.msg, true)
+        e isa InterruptException && rethrow()
+        return report_error(error_text(e), false)
     end
 end
-flush(stdout)
-exit(EXIT_CODE)
+
+end # module
+
+exit(HartreeFockKA.main(ARGS))

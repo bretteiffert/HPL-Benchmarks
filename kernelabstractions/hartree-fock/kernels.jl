@@ -1,157 +1,145 @@
-# kernels.jl — Hartree-Fock device code (KernelAbstractions).
-#
-# Math unchanged from the original hartree-fock.jl. Forced by run-time precision
-# and run-time --legacy-sqrt (the original fixed both as global constants at load):
-#   * RealT                -> T = eltype(fock)
-#   * DTOL / RCUT / SQRTPI2_DEV -> hf_dtol(T) / hf_rcut(T) / hf_sqrtpi2(T)  (same values)
-#   * sqrt_boys(x)         -> sqrt_boys(x, legacy)  with legacy::Val{Bool}, so the
-#                             branch still compiles away as with the old constant.
-
-module Kernels
+# Hartree-Fock device code: precision-specific math helpers and the Fock
+# build kernel. The kernel body is the HIP hartree_fock kernel line for line;
+# the only changes are the ones Julia/KernelAbstractions forces:
+#   - `@kernel` instead of `__global__`; the thread index
+#     blockIdx.x * blockDim.x + threadIdx.x is `@index(Global, Linear) - 1`
+#     (KernelAbstractions indices are 1-based, the original's are 0-based);
+#   - the early `return` for thread 0 and threads past nnnn is an enclosing
+#     `if` (KernelAbstractions kernels must not return early);
+#   - the integer index math is unchanged and 0-based; every array access
+#     adds 1 through `ix` (Julia arrays are 1-based);
+#   - `for (int ib = 0; ib < (int)ngauss; ib++) ... xpnt[ib]` is
+#     `for ib in 1:ngauss ... xpnt[ib]` (same Gaussians, 1-based);
+#   - atomicAdd is `Atomix.@atomic :monotonic` (relaxed, as atomicAdd);
+#   - the body is `@inbounds` (Julia checks bounds by default, C does not);
+#   - (uint64_t)sqrtf(2*x) is unsafe_trunc(UInt64, sqrt(Float32(2x))), the
+#     same uint64 -> float -> sqrtf -> truncation.
+# The math helpers call the same device functions the HIP overloads did:
+# Base.exp/sqrt/abs/^ and SpecialFunctions.erf, which AMDGPU.jl maps to OCML
+# (__ocml_exp_f32/f64, __ocml_pow_*, __ocml_erf_*, ...) and CUDA.jl to
+# libdevice (__nv_expf/__nv_exp, __nv_powf/__nv_pow, __nv_erff/__nv_erf, ...).
+# Julia does not contract a*b+c into an FMA unless asked; hipcc does by
+# default, so last-bit differences against the HIP build are expected.
 
 using KernelAbstractions
-using Atomix
+import Atomix
 import SpecialFunctions
 
-export hf_kernel!, erf_selftest_kernel!, hf_dtol, hf_rcut, hf_sqrtpi2, hf_tobohrs,
-       sq, idx_sqrt, sqrt_boys, gpu_erf, host_erf
+@inline r_sqrt(x::T) where {T <: Union{Float32, Float64}} = sqrt(x)
+@inline r_exp(x::T) where {T <: Union{Float32, Float64}} = exp(x)
+@inline r_erf(x::T) where {T <: Union{Float32, Float64}} = SpecialFunctions.erf(x)
+@inline r_pow(a::T, b::T) where {T <: Union{Float32, Float64}} = a^b
+@inline r_abs(x::T) where {T <: Union{Float32, Float64}} = abs(x)
+@inline r_sq(x) = x * x
 
-hf_dtol(::Type{T}) where {T} = T(1.0e-12)
-hf_rcut(::Type{T}) where {T} = T(1.0e-12)
-hf_sqrtpi2(::Type{T}) where {T} = T(1.12837916709551255856)
-hf_tobohrs(::Type{T}) where {T} = T(1.889725987722)
-
-@inline idx_sqrt(x::UInt64) = unsafe_trunc(UInt64, sqrt(Float32(x)))
-
-@inline sqrt_boys(x::T, ::Val{false}) where {T} = sqrt(x)
-@inline sqrt_boys(x::T, ::Val{true}) where {T} = T(sqrt(Float32(x)))
-
-@inline sq(x) = x * x
-
-@inline gpu_erf(x::Float64) = SpecialFunctions.erf(x)
-@inline gpu_erf(x::Float32) = SpecialFunctions.erf(x)
-@inline host_erf(x::Float64) = SpecialFunctions.erf(x)
-@inline host_erf(x::Float32) = Float32(SpecialFunctions.erf(Float64(x)))
-
-"Writes gpu_erf(x) for each x; used to check the device erf before the run."
-@kernel function erf_selftest_kernel!(out, @Const(x))
-    t = @index(Global, Linear)
-    @inbounds out[t] = gpu_erf(x[t])
+# LEGACY_SQRTF=1 behaviour (--legacy-sqrt): the Boys-function square roots go
+# through sqrtf in float even in a float64 build. Native mode uses r_sqrt.
+@inline function r_sqrt_boys(::Val{LegacySqrt}, x::T) where {LegacySqrt, T}
+    LegacySqrt && return T(sqrt(Float32(x)))
+    return r_sqrt(x)
 end
 
-@kernel function hf_kernel!(fock, nnnn, ngauss, natoms,
-                            @Const(geom), @Const(xpnt), @Const(coef),
-                            @Const(dens), @Const(schwarz), legacy)
-    T = eltype(fock)
-    DTOL = hf_dtol(T)
-    RCUT = hf_rcut(T)
-    SQRTPI2_DEV = hf_sqrtpi2(T)
+# 0-based index -> 1-based array position
+@inline ix(x::Integer) = (x % Int) + 1
 
-    # Match the native zero-based launch: global lane zero is inactive and
-    # lanes 1:nnnn each own one quartet.
-    idx = @index(Global, Linear)
-    ijkl = UInt64(idx - 1)
-    if UInt64(1) <= ijkl <= UInt64(nnnn)
-        nat = UInt64(natoms)
-        U1 = UInt64(1)
-        U2 = UInt64(2)
+@kernel function hartree_fock_kernel!(nnnn::UInt64, ngauss::UInt32, natoms::UInt32,
+        geom, xpnt, coef, dens, schwarz, fock, legacy::Val)
+    @inbounds begin
+    real_t = eltype(fock)
+    # Run-time precision: the screening constants are per-type locals with the
+    # same literal values as the original globals (dtol) and dev_consts.
+    dtol = real_t(1.0e-12)
+    dev_consts_sqrtpi2 = real_t(1.12837916709551255856)
+    dev_consts_rcut = real_t(1.0e-12)
 
-        @inbounds begin
-            ij = idx_sqrt(U2 * ijkl)
-            n = div(ij * ij + ij, U2)
-            while n < ijkl
-                ij += U1
-                n = div(ij * ij + ij, U2)
-            end
-            kl = ijkl - div(ij * ij - ij, U2)
-            nn = div(nat * nat + nat, U2)
+    ijkl = (@index(Global, Linear) - 1) % UInt64
+    if !(ijkl == 0 || ijkl > nnnn)
 
-            # Keep invalid triangular-pair indices away from unchecked device
-            # memory. These guards are outside the expensive Gaussian loops.
-            if U1 <= ij <= nn && U1 <= kl <= nn &&
-               schwarz[Int(ij + U1)] * schwarz[Int(kl + U1)] > DTOL
-                i = idx_sqrt(U2 * ij) - U1
-                n = div(i * i + i, U2)
-                while n < ij
-                    i += U1
-                    n = div(i * i + i, U2)
-                end
-                j = ij - div(i * i - i, U2)
+    ij = unsafe_trunc(UInt64, sqrt(Float32(UInt64(2) * ijkl)))
+    n = (ij*ij + ij) ÷ UInt64(2)
+    while n < ijkl
+        ij += UInt64(1)
+        n = (ij*ij + ij) ÷ UInt64(2)
+    end
+    kl = ijkl - (ij * ij - ij) ÷ UInt64(2)
+    if schwarz[ix(ij)] * schwarz[ix(kl)] > dtol
+        i = unsafe_trunc(UInt64, sqrt(Float32(UInt64(2) * ij))) - UInt64(1)
+        n = (i * i + i) ÷ UInt64(2)
+        while n < ij
+            i += UInt64(1)
+            n = (i * i + i) ÷ UInt64(2)
+        end
+        j = ij - (i * i - i) ÷ UInt64(2)
 
-                k = idx_sqrt(U2 * kl)
-                n = div(k * k + k, U2)
-                while n < kl
-                    k += U1
-                    n = div(k * k + k, U2)
-                end
-                l = kl - div(k * k - k, U2)
-                i -= U1
-                j -= U1
-                k -= U1
-                l -= U1
+        k = unsafe_trunc(UInt64, sqrt(Float32(UInt64(2) * kl)))
+        n = (k * k + k) ÷ UInt64(2)
+        while n < kl
+            k += UInt64(1)
+            n = (k * k + k ) ÷ UInt64(2)
+        end
+        l = kl - (k * k - k) ÷ UInt64(2)
+        i -= UInt64(1)
+        j -= UInt64(1)
+        k -= UInt64(1)
+        l -= UInt64(1)
 
-                if i < nat && j < nat && k < nat && l < nat
-                    # ROCDeviceArray and Atomix use Julia's signed linear
-                    # indices. Keep UInt64 for triangular-number arithmetic,
-                    # then convert only after all derived indices are checked.
-                    ii = Int(i)
-                    jj = Int(j)
-                    kk = Int(k)
-                    ll = Int(l)
-                    nat_i = Int(nat)
-                    eri = zero(T)
-                    one_T = one(T)
-                    p15 = T(1.5)
-                    pm05 = T(-0.5)
-                    for ib in 1:ngauss, jb in 1:ngauss
-                        aij = one_T / (xpnt[ib] + xpnt[jb])
-                        dij = coef[ib] * coef[jb] *
-                              exp(-xpnt[ib] * xpnt[jb] * aij *
-                                  (sq(geom[ii + 1] - geom[jj + 1]) +
-                                   sq(geom[nat_i + ii + 1] - geom[nat_i + jj + 1]) +
-                                   sq(geom[2 * nat_i + ii + 1] - geom[2 * nat_i + jj + 1]))) * aij^p15
-                        if abs(dij) > DTOL
-                            xij = aij * (xpnt[ib] * geom[ii + 1] + xpnt[jb] * geom[jj + 1])
-                            yij = aij * (xpnt[ib] * geom[nat_i + ii + 1] + xpnt[jb] * geom[nat_i + jj + 1])
-                            zij = aij * (xpnt[ib] * geom[2 * nat_i + ii + 1] + xpnt[jb] * geom[2 * nat_i + jj + 1])
-                            for kb in 1:ngauss, lb in 1:ngauss
-                                akl = one_T / (xpnt[kb] + xpnt[lb])
-                                dkl = dij * coef[kb] * coef[lb] *
-                                      exp(-xpnt[kb] * xpnt[lb] * akl *
-                                          (sq(geom[kk + 1] - geom[ll + 1]) +
-                                           sq(geom[nat_i + kk + 1] - geom[nat_i + ll + 1]) +
-                                           sq(geom[2 * nat_i + kk + 1] - geom[2 * nat_i + ll + 1]))) * akl^p15
-                                if abs(dkl) > DTOL
-                                    aijkl = (xpnt[ib] + xpnt[jb]) * (xpnt[kb] + xpnt[lb]) /
-                                            (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
-                                    tt = aijkl * (sq(xij - akl * (xpnt[kb] * geom[kk + 1] + xpnt[lb] * geom[ll + 1])) +
-                                                  sq(yij - akl * (xpnt[kb] * geom[nat_i + kk + 1] + xpnt[lb] * geom[nat_i + ll + 1])) +
-                                                  sq(zij - akl * (xpnt[kb] * geom[2 * nat_i + kk + 1] + xpnt[lb] * geom[2 * nat_i + ll + 1])))
-                                    f0t = SQRTPI2_DEV
-                                    if tt > RCUT
-                                        f0t = tt^pm05 * gpu_erf(sqrt_boys(tt, legacy))
-                                    end
-                                    eri += dkl * f0t * sqrt_boys(aijkl, legacy)
+        eri = real_t(0.0)
+        for ib in 1:Int(ngauss)
+            for jb in 1:Int(ngauss)
+                aij = real_t(1.0) / (xpnt[ib] + xpnt[jb])
+                dij = coef[ib] * coef[jb] *
+                    r_exp(-xpnt[ib] * xpnt[jb] * aij *
+                            (r_sq(geom[ix(i)] - geom[ix(j)]) +
+                             r_sq(geom[ix(1*natoms + i)] - geom[ix(1*natoms + j)]) +
+                             r_sq(geom[ix(2*natoms + i)] - geom[ix(2*natoms + j)]))) *
+                    r_pow(aij, real_t(1.5))
+                if r_abs(dij) > dtol
+                    xij = aij * (xpnt[ib] * geom[ix(i)] + xpnt[jb] * geom[ix(j)])
+                    yij = aij * (xpnt[ib] * geom[ix(1*natoms + i)] + xpnt[jb] * geom[ix(1*natoms + j)])
+                    zij = aij * (xpnt[ib] * geom[ix(2*natoms + i)] + xpnt[jb] * geom[ix(2*natoms + j)])
+                    for kb in 1:Int(ngauss)
+                        for lb in 1:Int(ngauss)
+                            akl = real_t(1.0) / (xpnt[kb] + xpnt[lb])
+                            dkl = dij * coef[kb] * coef[lb] *
+                                r_exp(-xpnt[kb] * xpnt[lb] * akl *
+                                        (r_sq(geom[ix(k)] - geom[ix(l)]) +
+                                         r_sq(geom[ix(natoms + k)] - geom[ix(natoms + l)]) +
+                                         r_sq(geom[ix(2*natoms + k)] - geom[ix(2*natoms + l)]))) * r_pow(akl, real_t(1.5))
+                            if r_abs(dkl) > dtol
+                                aijkl = (xpnt[ib] + xpnt[jb]) *
+                                        (xpnt[kb] + xpnt[lb]) /
+                                        (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
+                                tt = aijkl * (r_sq(xij - akl * (xpnt[kb] * geom[ix(k)] + xpnt[lb] * geom[ix(l)])) +
+                                        r_sq(yij - akl * (xpnt[kb] * geom[ix(natoms + k)] + xpnt[lb] * geom[ix(natoms + l)])) +
+                                        r_sq(zij - akl * (xpnt[kb] * geom[ix(2*natoms + k)] + xpnt[lb] * geom[ix(2*natoms + l)])))
+                                f0t = dev_consts_sqrtpi2
+                                if tt > dev_consts_rcut
+                                    f0t = (r_pow(tt, real_t(-0.5)) * r_erf(r_sqrt_boys(legacy, tt)))
                                 end
+                                eri += dkl * f0t * r_sqrt_boys(legacy, aijkl)
                             end
                         end
                     end
-
-                    ii == jj && (eri *= T(0.5))
-                    kk == ll && (eri *= T(0.5))
-                    (ii == kk && jj == ll) && (eri *= T(0.5))
-
-                    four = T(4.0)
-                    Atomix.@atomic fock[ii * nat_i + jj + 1] += dens[kk * nat_i + ll + 1] * eri * four
-                    Atomix.@atomic fock[kk * nat_i + ll + 1] += dens[ii * nat_i + jj + 1] * eri * four
-                    Atomix.@atomic fock[ii * nat_i + kk + 1] += -dens[jj * nat_i + ll + 1] * eri
-                    Atomix.@atomic fock[ii * nat_i + ll + 1] += -dens[jj * nat_i + kk + 1] * eri
-                    Atomix.@atomic fock[jj * nat_i + kk + 1] += -dens[ii * nat_i + ll + 1] * eri
-                    Atomix.@atomic fock[jj * nat_i + ll + 1] += -dens[ii * nat_i + kk + 1] * eri
                 end
             end
         end
+        if i == j
+            eri *= real_t(0.5)
+        end
+        if k == l
+            eri *= real_t(0.5)
+        end
+        if i == k && j == l
+            eri *= real_t(0.5)
+        end
+        Atomix.@atomic :monotonic fock[ix(i*natoms + j)] += dens[ix(k*natoms + l)]*eri*real_t(4.0)
+        Atomix.@atomic :monotonic fock[ix(k*natoms + l)] += dens[ix(i*natoms + j)]*eri*real_t(4.0)
+        Atomix.@atomic :monotonic fock[ix(i*natoms + k)] += -dens[ix(j*natoms + l)]*eri
+        Atomix.@atomic :monotonic fock[ix(i*natoms + l)] += -dens[ix(j*natoms + k)]*eri
+        Atomix.@atomic :monotonic fock[ix(j*natoms + k)] += -dens[ix(i*natoms + l)]*eri
+        Atomix.@atomic :monotonic fock[ix(j*natoms + l)] += -dens[ix(i*natoms + k)]*eri
     end
-end
 
-end # module Kernels
+    end  # thread 0 and threads past nnnn do nothing
+    end  # @inbounds
+end

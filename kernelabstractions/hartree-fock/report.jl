@@ -1,186 +1,247 @@
-# report.jl — the Hartree-Fock report and its three formatters (text, --csv, --csv-raw).
-# Formatters read only from the Report; nothing else prints results.
-
-module Reports
+# Hartree-Fock report: one struct filled by the run, three formatters
+# (text, --csv, --csv-raw) that read only from it.
+#
+# Stream rules (applied by main): text mode writes everything to stdout; the
+# CSV modes write only CSV to stdout and the text header, energy and
+# correctness sections to stderr.
 
 using Printf
-using ..BoardEnergy: EnergyResult, joules_per_iter, total_wh
 
-export Report, Metric, print_header, print_text, print_csv, print_csv_raw,
-       print_stderr_sections, IMPLEMENTATION, ROUTINE
-
-const IMPLEMENTATION = "KernelAbstractions"
-const ROUTINE = "Fock build"
-
-"One correctness line: label and value (scientific notation)."
-struct Metric
-    label::String
-    value::Float64
-    digits::Int
+Base.@kwdef mutable struct RoutineResult
+    name::String = ""                    # "Fock build"
+    times::Vector{Float64} = Float64[]   # seconds, timed builds only (untimed first build excluded)
 end
+
+min_s(r::RoutineResult) = isempty(r.times) ? 0.0 : minimum(r.times)
+max_s(r::RoutineResult) = isempty(r.times) ? 0.0 : maximum(r.times)
 
 Base.@kwdef mutable struct Report
-    backend::String
-    device::String
-    driver::String
-    precision::String             # float32 / float64
-    sqrt_mode::String             # native / legacy-sqrtf
-    input::String                 # basename of the input file
-    natoms::Int
-    ngauss::Int
-    nnnn::Int                     # work items (unique integral quartets)
-    block_size::Int
-    num_times::Int
-    timing::String
-    energy_enabled::Bool
+    benchmark::String = "Hartree-Fock"
+    implementation::String = ""          # port name, "KernelAbstractions"
+    backend::String = ""
+    device::String = ""
+    driver::String = ""
+    precision::Precision = PrecisionDouble
+    sqrt_mode::SqrtMode = SqrtNative
+
+    input::String = ""                   # file name without directories
+    natoms::UInt32 = 0
+    ngauss::UInt32 = 0
+    pairs::UInt64 = 0                    # unique atom pairs
+    quartets::UInt64 = 0                 # unique pair quartets = kernel threads doing work
+
+    block_size::UInt32 = 0
+    grid::UInt64 = 0
+    num_times::Int = 0                   # timed builds
+    timing::String = ""
+
     header_notes::Vector{String} = String[]
-    times::Vector{Float64} = Float64[]       # timed iterations only
-    energy::Union{Nothing,EnergyResult} = nothing
-    energy_notes::Vector{String} = String[]
-    e2_energy::Float64 = NaN                 # 2e- energy, this precision end to end
-    rel_err_ref::Float64 = NaN               # vs fp64 CPU reference (NaN = not checked)
-    metrics::Vector{Metric} = Metric[]
-    check_notes::Vector{String} = String[]
+
+    fock::RoutineResult = RoutineResult()
+    checksum::Float64 = 0.0              # 2e- energy of the first build, run-precision sum
+    energy::EnergyResult = EnergyResult()
+
+    checked::Bool = false
+    check_skipped::String = ""           # reason, when not checked
+    check::FockCheck = FockCheck()
 end
 
-# ---------------------------------------------------------------- helpers
-
-function thousands(n::Integer)
-    s = string(abs(n))
-    parts = String[]
-    while length(s) > 3
-        pushfirst!(parts, s[end-2:end])
-        s = s[1:end-3]
+# Left-to-right sum, as std::accumulate (Base.sum would sum pairwise).
+function avg_s(r::RoutineResult)
+    isempty(r.times) && return 0.0
+    acc = 0.0
+    for t in r.times
+        acc += t
     end
-    pushfirst!(parts, s)
-    return (n < 0 ? "-" : "") * join(parts, ",")
+    return acc / length(r.times)
 end
 
-"Scientific notation without exponent padding: 1.230000e-1, 6.83e5."
-function sci(x::Real, digits::Int)
-    isfinite(x) || return string(x)
-    s = Printf.format(Printf.Format("%.$(digits)e"), Float64(x))
-    m, e = split(s, 'e')
-    return "$(m)e$(parse(Int, e))"
+# ---- formatting helpers ----------------------------------------------------
+
+function format_thousands(v::Integer)::String
+    neg = v < 0
+    digits = string(neg ? -Int128(v) : Int128(v))
+    out = Char[]
+    n = 0
+    for ch in reverse(digits)
+        (n > 0 && n % 3 == 0) && push!(out, ',')
+        push!(out, ch)
+        n += 1
+    end
+    neg && push!(out, '-')
+    return String(reverse(out))
 end
 
-fixed(x::Real, d::Int) = Printf.format(Printf.Format("%.$(d)f"), Float64(x))
+const _fmt_cache = Dict{String, Printf.Format}()
+cfmt(spec::String, v) = Printf.format(get!(() -> Printf.Format(spec), _fmt_cache, spec), v)
 
-csv_field(s::AbstractString) =
-    any(c -> c in (',', '"', '\n', '\r'), s) ? "\"" * replace(s, "\"" => "\"\"") * "\"" : String(s)
+function format_fixed(v::Float64, decimals::Int)::String
+    isnan(v) && return "nan"
+    isinf(v) && return v > 0 ? "inf" : "-inf"
+    return cfmt("%." * string(decimals) * "f", v)
+end
 
-stats(t::Vector{Float64}) = (minimum(t), maximum(t), sum(t) / length(t))
+# 1.230000e-1: C %.*e with the exponent padding removed.
+function format_sci(v::Float64, decimals::Int)::String
+    isnan(v) && return "nan"
+    isinf(v) && return v > 0 ? "inf" : "-inf"
+    s = cfmt("%." * string(decimals) * "e", v)
+    e = findfirst('e', s)
+    e === nothing && return s
+    exponent = parse(Int, s[e+1:end])
+    return s[1:e-1] * "e" * string(exponent)
+end
 
-kv(io, k, v) = println(io, "  ", rpad(k, 13), v)
+function csv_field(s::AbstractString)::String
+    any(c -> c in (',', '"', '\n', '\r'), s) || return String(s)
+    return "\"" * replace(s, "\"" => "\"\"") * "\""
+end
 
-# ---------------------------------------------------------------- text
+pad_left(s::AbstractString, width::Int) = ncodeunits(s) >= width ? String(s) : " "^(width - ncodeunits(s)) * s
+pad_right(s::AbstractString, width::Int) = ncodeunits(s) >= width ? String(s) : s * " "^(width - ncodeunits(s))
 
-"Section 1: printed before the run starts."
-function print_header(io::IO, r::Report)
-    println(io, "Hartree-Fock (", IMPLEMENTATION, ")")
-    kv(io, "Backend", r.backend)
-    kv(io, "Device", r.device)
-    kv(io, "Driver", r.driver)
-    kv(io, "Precision", r.precision)
-    kv(io, "Sqrt mode", r.sqrt_mode)
-    kv(io, "Input", "$(r.input) ($(thousands(r.natoms)) atoms, $(thousands(r.ngauss)) Gaussians)")
-    kv(io, "Quartets", "$(thousands(r.nnnn)) ($(thousands(cld(r.nnnn + 1, r.block_size))) workgroups)")
-    kv(io, "Block size", string(r.block_size))
-    kv(io, "Iterations", "$(r.num_times) (after 1 untimed run)")
-    kv(io, "Timing", r.timing)
-    kv(io, "Energy", r.energy_enabled ? "libkernelenergy (board power)" : "disabled (--no-energy)")
+key(out::IO, k::AbstractString, v::AbstractString) = print(out, "  ", pad_right(k, 13), v, "\n")
+
+csv_prefix(r::Report) = csv_field(r.implementation) * "," * csv_field(r.backend) * "," *
+                        csv_field(r.device) * "," * precision_name(r.precision) * ","
+
+# CSV numbers: full precision for energies, plain C exponent form (printf %.16e).
+function csv_sci(v::Float64)::String
+    isnan(v) && return signbit(v) ? "-nan" : "nan"
+    isinf(v) && return v > 0 ? "inf" : "-inf"
+    return cfmt("%.16e", v)
+end
+
+# ---- text ------------------------------------------------------------------
+
+function print_text_header(r::Report, out::IO)
+    print(out, r.benchmark, " (", r.implementation, ")\n")
+    key(out, "Backend", r.backend)
+    key(out, "Device", r.device)
+    key(out, "Driver", r.driver)
+    key(out, "Precision", precision_name(r.precision))
+    key(out, "Sqrt mode", sqrt_mode_name(r.sqrt_mode))
+    key(out, "Input", r.input * " (" * format_thousands(r.natoms) * " atoms, " *
+                      format_thousands(r.ngauss) * " Gaussians)")
+    key(out, "Quartets", format_thousands(r.quartets) * " (from " *
+                         format_thousands(r.pairs) * " atom pairs)")
+    key(out, "Block size", string(r.block_size))
+    key(out, "Grid", format_thousands(r.grid) * " blocks")
+    key(out, "Iterations", format_thousands(r.num_times) * " (after 1 untimed build)")
+    key(out, "Timing", r.timing)
+    key(out, "Energy", r.energy.enabled ? "libkernelenergy (board power)" : "disabled (--no-energy)")
+
     for n in r.header_notes
-        println(io, "  note: ", n)
+        print(out, "  note: ", n, "\n")
     end
-    flush(io)
+    flush(out)
 end
 
-function print_results(io::IO, r::Report)
-    println(io, rpad("Routine", 12), lpad("Min (s)", 14), lpad("Max (s)", 14), lpad("Avg (s)", 14))
-    tmin, tmax, tavg = stats(r.times)
-    println(io, rpad(ROUTINE, 12), lpad(fixed(tmin, 8), 14), lpad(fixed(tmax, 8), 14),
-            lpad(fixed(tavg, 8), 14))
+function print_text_results(r::Report, out::IO)
+    t_w = 14
+    print(out, "\n",
+          pad_right("Routine", 12), pad_left("Min (s)", t_w), pad_left("Max (s)", t_w),
+          pad_left("Avg (s)", t_w), "\n")
+    print(out, pad_right(r.fock.name, 12),
+          pad_left(format_fixed(min_s(r.fock), 8), t_w),
+          pad_left(format_fixed(max_s(r.fock), 8), t_w),
+          pad_left(format_fixed(avg_s(r.fock), 8), t_w), "\n")
+    print(out, "  note: each timed build adds into the same Fock matrix; the checksum and the check use the untimed first build\n")
+    flush(out)
 end
 
-function print_energy(io::IO, r::Report)
-    if !r.energy_enabled
-        println(io, "Energy  disabled (--no-energy)")
-    elseif r.energy !== nothing
-        e = r.energy
-        println(io, rpad("Energy", 8), lpad("J/iter", 14), lpad("Total (Wh)", 14),
-                lpad("Avg power (W)", 16), lpad("Time (s)", 12), lpad("Iterations", 13),
-                lpad("Samples", 10))
-        println(io, rpad("board", 8), lpad(fixed(joules_per_iter(e), 6), 14),
-                lpad(fixed(total_wh(e), 6), 14), lpad(fixed(e.avg_power_w, 2), 16),
-                lpad(fixed(e.time_s, 6), 12), lpad(thousands(e.iterations), 13),
-                lpad(thousands(e.samples), 10))
+function print_text_energy(r::Report, out::IO)
+    print(out, "\n")
+    if !r.energy.enabled
+        print(out, "Energy  disabled (--no-energy)\n")
+        flush(out)
+        return
     end
-    for n in r.energy_notes
-        println(io, "  note: ", n)
-    end
-end
 
-function print_correctness(io::IO, r::Report)
-    println(io, "Correctness (", r.precision, ", untimed run)")
-    for m in r.metrics
-        println(io, rpad(m.label, 46), lpad(sci(m.value, m.digits), 24))
-    end
-    for n in r.check_notes
-        println(io, "  note: ", n)
-    end
-end
-
-"Text mode: sections 2-4 (header already printed) on stdout."
-function print_text(io::IO, r::Report)
-    println(io)
-    print_results(io, r)
-    println(io)
-    print_energy(io, r)
-    println(io)
-    print_correctness(io, r)
-end
-
-"CSV modes: energy and correctness go to stderr."
-function print_stderr_sections(io::IO, r::Report)
-    println(io)
-    print_energy(io, r)
-    println(io)
-    print_correctness(io, r)
-end
-
-# ---------------------------------------------------------------- CSV
-
-prefix(r::Report) = join((IMPLEMENTATION, csv_field(r.backend), csv_field(r.device),
-                          r.precision), ",")
-
-const CSV_HEADER = "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss," *
-                   "block_size,quartets,groups,num_times,routine,min_s,max_s,avg_s,e2_energy,rel_err_ref," *
-                   "energy_j_per_iter,avg_power_w"
-
-const CSV_RAW_HEADER = "implementation,backend,device,precision,sqrt_mode,input,natoms," *
-                       "ngauss,block_size,quartets,groups,routine,iteration,time_s"
-
-f9(x) = fixed(x, 9)
-
-function print_csv(io::IO, r::Report)
-    println(io, CSV_HEADER)
-    tmin, tmax, tavg = stats(r.times)
     e = r.energy
-    ej, ew = e === nothing ? ("", "") : (fixed(joules_per_iter(e), 6), fixed(e.avg_power_w, 2))
-    rel = isnan(r.rel_err_ref) ? "" : sci(r.rel_err_ref, 6)
-    println(io, join((prefix(r), r.sqrt_mode, csv_field(r.input), r.natoms, r.ngauss,
-                      r.block_size, r.nnnn, cld(r.nnnn + 1, r.block_size), r.num_times,
-                      ROUTINE, f9(tmin), f9(tmax), f9(tavg),
-                      sci(r.e2_energy, 15), rel, ej, ew), ","))
+    print(out, pad_right("Energy", 8), pad_left("J/iter", 14), pad_left("Total (Wh)", 14),
+          pad_left("Avg power (W)", 16), pad_left("Time (s)", 12),
+          pad_left("Iterations", 13), pad_left("Samples", 10), "\n")
+    print(out, pad_right("board", 8),
+          pad_left(format_fixed(e.joules_per_iter, 6), 14),
+          pad_left(format_fixed(e.total_wh, 6), 14),
+          pad_left(format_fixed(e.avg_power_w, 2), 16),
+          pad_left(format_fixed(e.seconds, 6), 12),
+          pad_left(format_thousands(e.iterations), 13),
+          pad_left(format_thousands(e.samples), 10), "\n")
+    e.samples < 2 && print(out, "  note: fewer than two power samples; the energy figures may be unreliable\n")
+    flush(out)
 end
 
-function print_csv_raw(io::IO, r::Report)
-    println(io, CSV_RAW_HEADER)
-    for (k, t) in enumerate(r.times)
-        println(io, join((prefix(r), r.sqrt_mode, csv_field(r.input), r.natoms, r.ngauss,
-                          r.block_size, r.nnnn, cld(r.nnnn + 1, r.block_size),
-                          ROUTINE, k, f9(t)), ","))
+function print_text_correctness(r::Report, out::IO)
+    prec = precision_name(r.precision)
+    label_w = 42
+    value_w = 24
+    row(label, value) = print(out, pad_right(label, label_w), pad_left(value, value_w), "\n")
+
+    print(out, "\n",
+          "Correctness (", prec, ", sqrt ", sqrt_mode_name(r.sqrt_mode),
+          ", untimed first build vs fp64 CPU reference)\n")
+    print(out, pad_right("Quantity", label_w), pad_left("Value", value_w), "\n")
+
+    row("2e- energy (" * prec * " Fock, " * prec * " sum)", format_sci(r.checksum, 16))
+
+    if r.checked
+        c = r.check
+        row("2e- energy (" * prec * " Fock, fp64 sum)", format_sci(c.e_gpu, 16))
+        row("2e- energy (fp64 CPU reference)", format_sci(c.e_ref, 16))
+        row("rel err, Fock build only", format_sci(c.rel_loss, 6))
+        row("rel err, incl. " * prec * " sum", format_sci(c.rel_inpipe, 6))
+        row("max |F - F_ref|", format_sci(c.max_abs, 6))
+        row("max |F - F_ref| / max |F_ref|", format_sci(c.max_rel, 6))
+        row("rms |F - F_ref|", format_sci(c.rms_abs, 6))
+        row("max |F(i,j) - F(j,i)|", format_sci(c.asym, 6))
+        row("2e- energy, symmetrized F (diagnostic)", format_sci(c.e_symmetrized, 16))
+    else
+        print(out, "  note: reference check skipped: ", r.check_skipped, "\n")
     end
+    print(out, "  note: the 2e- energy is an unsymmetrized benchmark checksum, not a physical two-electron energy\n")
+    flush(out)
 end
 
-end # module Reports
+# ---- CSV -------------------------------------------------------------------
+
+function print_csv(r::Report, out::IO; with_header::Bool = true)
+    if with_header
+        print(out, "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,num_times,",
+                   "routine,min_s,max_s,avg_s,e2_energy,rel_err_ref,energy_j_per_iter,avg_power_w\n")
+    end
+
+    print(out, csv_prefix(r), sqrt_mode_name(r.sqrt_mode), ",", csv_field(r.input), ",",
+          r.natoms, ",", r.ngauss, ",", r.block_size, ",", r.quartets, ",",
+          r.grid, ",", r.num_times, ",",
+          csv_field(r.fock.name), ",",
+          format_fixed(min_s(r.fock), 9), ",", format_fixed(max_s(r.fock), 9), ",",
+          format_fixed(avg_s(r.fock), 9), ",",
+          csv_sci(r.checksum), ",")
+    r.checked && print(out, csv_sci(r.check.rel_inpipe))
+    print(out, ",")
+    if r.energy.enabled
+        print(out, format_fixed(r.energy.joules_per_iter, 6), ",", format_fixed(r.energy.avg_power_w, 3))
+    else
+        print(out, ",")
+    end
+    print(out, "\n")
+    flush(out)
+end
+
+function print_csv_raw(r::Report, out::IO; with_header::Bool = true)
+    if with_header
+        print(out, "implementation,backend,device,precision,sqrt_mode,input,natoms,ngauss,block_size,quartets,groups,",
+                   "routine,iteration,time_s\n")
+    end
+
+    prefix = csv_prefix(r) * sqrt_mode_name(r.sqrt_mode) * "," * csv_field(r.input) * "," *
+             string(r.natoms) * "," * string(r.ngauss) * "," *
+             string(r.block_size) * "," * string(r.quartets) * "," *
+             string(r.grid) * "," * csv_field(r.fock.name) * ","
+    for (j, t) in enumerate(r.fock.times)
+        print(out, prefix, j, ",", format_fixed(t, 9), "\n")
+    end
+    flush(out)
+end
