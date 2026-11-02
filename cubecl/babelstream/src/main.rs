@@ -171,9 +171,11 @@ fn run<F: Elem>(args: &Args, use_fma: bool) {
     let client = backend::client(&device);
     let props = client.properties();
     let hw = &props.hardware;
-    if !props.supports_type(F::as_type_native().expect("native element type")) {
-        fail(&format!("{} is not supported on this device", F::PRECISION));
-    }
+    // CubeCL 0.10 deliberately omits f64 from its advertised supported-type
+    // list even though the HIP code generator emits `double` and devices such
+    // as MI300A execute these kernels correctly. Do not use supports_type() as
+    // a hard gate; an actual unsupported type will fail during compilation or
+    // launch with the backend's diagnostic.
     validate_block_size(args, hw.max_units_per_cube);
 
     let (device, name_note) = backend::resolve_name(args.device_index, &client);
