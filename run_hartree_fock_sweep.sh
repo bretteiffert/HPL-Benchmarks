@@ -148,22 +148,43 @@ esac
 failure_count=0
 
 append_rows() {
-  local source_file="$1" destination_file="$2" expected_header="$3" repetition="$4"
-  local actual_header line row_count=0
-  IFS= read -r actual_header < "$source_file" || return 1
-  [[ "$actual_header" == "$expected_header" ]] || return 1
-  while IFS= read -r line; do
-    if [[ -n "$line" ]]; then
-      printf '%s,%s\n' "$line" "$repetition" >> "$destination_file"
-      row_count=$((row_count + 1))
-    fi
-  done < <(tail -n +2 "$source_file")
-  [[ "$row_count" -gt 0 ]]
+  local source_file="$1" destination_file="$2" expected_header="$3" repetition="$4" implementation="$5"
+  python3 - "$source_file" "$destination_file" "$expected_header" "$repetition" "$implementation" <<'PY'
+import csv
+import sys
+
+source, destination, expected_text, repetition, implementation = sys.argv[1:]
+expected = expected_text.split(",")
+
+with open(source, newline="", encoding="utf-8") as handle:
+    reader = csv.DictReader(handle)
+    if reader.fieldnames != expected:
+        raise SystemExit(1)
+    rows = list(reader)
+
+if not rows or any(
+    None in row or any(row.get(field) is None for field in expected)
+    for row in rows
+):
+    raise SystemExit(1)
+
+with open(destination, "a", newline="", encoding="utf-8") as handle:
+    writer = csv.DictWriter(
+        handle,
+        fieldnames=expected + ["repetition"],
+        lineterminator="\n",
+    )
+    for row in rows:
+        if implementation == "native":
+            row["implementation"] = "Native"
+        row["repetition"] = repetition
+        writer.writerow(row)
+PY
 }
 
 run_one() {
   local run_mode="$1" repetition="$2" implementation="$3" run_precision="$4"
-  local mode_dir csv_file log_file precision_flag iterations aggregate expected_header
+  local mode_dir csv_file log_file precision_flag iterations aggregate expected_header reason
   local -a command args
 
   case "$run_precision" in
@@ -203,11 +224,24 @@ run_one() {
   printf 'rep %d: %-18s %-7s %-7s n=%s\n' "$repetition" "$implementation" "$run_precision" "$run_mode" "$iterations" >&2
   { printf 'command:'; printf ' %q' "${command[@]}" "${args[@]}"; printf '\n'; } > "$log_file"
 
+  local command_failed=0
   if ! "${command[@]}" "${args[@]}" > "$csv_file" 2>> "$log_file"; then
+    command_failed=1
+  fi
+
+  if [[ "$command_failed" -eq 1 && "$implementation" != native ]]; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=command_failed log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
-  elif ! append_rows "$csv_file" "$aggregate" "$expected_header" "$repetition"; then
-    echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=invalid_csv log=$log_file" >> "$failures_file"
+  elif ! append_rows "$csv_file" "$aggregate" "$expected_header" "$repetition" "$implementation"; then
+    if [[ "$command_failed" -eq 1 ]]; then
+      reason=command_failed
+    else
+      reason=invalid_csv
+    fi
+    echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=$reason log=$log_file" >> "$failures_file"
+    failure_count=$((failure_count + 1))
+  elif [[ "$command_failed" -eq 1 ]]; then
+    echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=command_failed_partial_csv_aggregated log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
   fi
 }

@@ -64,8 +64,12 @@ end
                 n = div(ij * ij + ij, U2)
             end
             kl = ijkl - div(ij * ij - ij, U2)
+            nn = div(nat * nat + nat, U2)
 
-            if schwarz[ij + U1] * schwarz[kl + U1] > DTOL
+            # Keep invalid triangular-pair indices away from unchecked device
+            # memory. These guards are outside the expensive Gaussian loops.
+            if U1 <= ij <= nn && U1 <= kl <= nn &&
+               schwarz[Int(ij + U1)] * schwarz[Int(kl + U1)] > DTOL
                 i = idx_sqrt(U2 * ij) - U1
                 n = div(i * i + i, U2)
                 while n < ij
@@ -86,55 +90,65 @@ end
                 k -= U1
                 l -= U1
 
-                eri = zero(T)
-                one_T = one(T)
-                p15 = T(1.5)
-                pm05 = T(-0.5)
-                for ib in 1:ngauss, jb in 1:ngauss
-                    aij = one_T / (xpnt[ib] + xpnt[jb])
-                    dij = coef[ib] * coef[jb] *
-                          exp(-xpnt[ib] * xpnt[jb] * aij *
-                              (sq(geom[i + U1] - geom[j + U1]) +
-                               sq(geom[nat + i + U1] - geom[nat + j + U1]) +
-                               sq(geom[U2 * nat + i + U1] - geom[U2 * nat + j + U1]))) * aij^p15
-                    if abs(dij) > DTOL
-                        xij = aij * (xpnt[ib] * geom[i + U1] + xpnt[jb] * geom[j + U1])
-                        yij = aij * (xpnt[ib] * geom[nat + i + U1] + xpnt[jb] * geom[nat + j + U1])
-                        zij = aij * (xpnt[ib] * geom[U2 * nat + i + U1] + xpnt[jb] * geom[U2 * nat + j + U1])
-                        for kb in 1:ngauss, lb in 1:ngauss
-                            akl = one_T / (xpnt[kb] + xpnt[lb])
-                            dkl = dij * coef[kb] * coef[lb] *
-                                  exp(-xpnt[kb] * xpnt[lb] * akl *
-                                      (sq(geom[k + U1] - geom[l + U1]) +
-                                       sq(geom[nat + k + U1] - geom[nat + l + U1]) +
-                                       sq(geom[U2 * nat + k + U1] - geom[U2 * nat + l + U1]))) * akl^p15
-                            if abs(dkl) > DTOL
-                                aijkl = (xpnt[ib] + xpnt[jb]) * (xpnt[kb] + xpnt[lb]) /
-                                        (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
-                                tt = aijkl * (sq(xij - akl * (xpnt[kb] * geom[k + U1] + xpnt[lb] * geom[l + U1])) +
-                                              sq(yij - akl * (xpnt[kb] * geom[nat + k + U1] + xpnt[lb] * geom[nat + l + U1])) +
-                                              sq(zij - akl * (xpnt[kb] * geom[U2 * nat + k + U1] + xpnt[lb] * geom[U2 * nat + l + U1])))
-                                f0t = SQRTPI2_DEV
-                                if tt > RCUT
-                                    f0t = tt^pm05 * gpu_erf(sqrt_boys(tt, legacy))
+                if i < nat && j < nat && k < nat && l < nat
+                    # ROCDeviceArray and Atomix use Julia's signed linear
+                    # indices. Keep UInt64 for triangular-number arithmetic,
+                    # then convert only after all derived indices are checked.
+                    ii = Int(i)
+                    jj = Int(j)
+                    kk = Int(k)
+                    ll = Int(l)
+                    nat_i = Int(nat)
+                    eri = zero(T)
+                    one_T = one(T)
+                    p15 = T(1.5)
+                    pm05 = T(-0.5)
+                    for ib in 1:ngauss, jb in 1:ngauss
+                        aij = one_T / (xpnt[ib] + xpnt[jb])
+                        dij = coef[ib] * coef[jb] *
+                              exp(-xpnt[ib] * xpnt[jb] * aij *
+                                  (sq(geom[ii + 1] - geom[jj + 1]) +
+                                   sq(geom[nat_i + ii + 1] - geom[nat_i + jj + 1]) +
+                                   sq(geom[2 * nat_i + ii + 1] - geom[2 * nat_i + jj + 1]))) * aij^p15
+                        if abs(dij) > DTOL
+                            xij = aij * (xpnt[ib] * geom[ii + 1] + xpnt[jb] * geom[jj + 1])
+                            yij = aij * (xpnt[ib] * geom[nat_i + ii + 1] + xpnt[jb] * geom[nat_i + jj + 1])
+                            zij = aij * (xpnt[ib] * geom[2 * nat_i + ii + 1] + xpnt[jb] * geom[2 * nat_i + jj + 1])
+                            for kb in 1:ngauss, lb in 1:ngauss
+                                akl = one_T / (xpnt[kb] + xpnt[lb])
+                                dkl = dij * coef[kb] * coef[lb] *
+                                      exp(-xpnt[kb] * xpnt[lb] * akl *
+                                          (sq(geom[kk + 1] - geom[ll + 1]) +
+                                           sq(geom[nat_i + kk + 1] - geom[nat_i + ll + 1]) +
+                                           sq(geom[2 * nat_i + kk + 1] - geom[2 * nat_i + ll + 1]))) * akl^p15
+                                if abs(dkl) > DTOL
+                                    aijkl = (xpnt[ib] + xpnt[jb]) * (xpnt[kb] + xpnt[lb]) /
+                                            (xpnt[ib] + xpnt[jb] + xpnt[kb] + xpnt[lb])
+                                    tt = aijkl * (sq(xij - akl * (xpnt[kb] * geom[kk + 1] + xpnt[lb] * geom[ll + 1])) +
+                                                  sq(yij - akl * (xpnt[kb] * geom[nat_i + kk + 1] + xpnt[lb] * geom[nat_i + ll + 1])) +
+                                                  sq(zij - akl * (xpnt[kb] * geom[2 * nat_i + kk + 1] + xpnt[lb] * geom[2 * nat_i + ll + 1])))
+                                    f0t = SQRTPI2_DEV
+                                    if tt > RCUT
+                                        f0t = tt^pm05 * gpu_erf(sqrt_boys(tt, legacy))
+                                    end
+                                    eri += dkl * f0t * sqrt_boys(aijkl, legacy)
                                 end
-                                eri += dkl * f0t * sqrt_boys(aijkl, legacy)
                             end
                         end
                     end
+
+                    ii == jj && (eri *= T(0.5))
+                    kk == ll && (eri *= T(0.5))
+                    (ii == kk && jj == ll) && (eri *= T(0.5))
+
+                    four = T(4.0)
+                    Atomix.@atomic fock[ii * nat_i + jj + 1] += dens[kk * nat_i + ll + 1] * eri * four
+                    Atomix.@atomic fock[kk * nat_i + ll + 1] += dens[ii * nat_i + jj + 1] * eri * four
+                    Atomix.@atomic fock[ii * nat_i + kk + 1] += -dens[jj * nat_i + ll + 1] * eri
+                    Atomix.@atomic fock[ii * nat_i + ll + 1] += -dens[jj * nat_i + kk + 1] * eri
+                    Atomix.@atomic fock[jj * nat_i + kk + 1] += -dens[ii * nat_i + ll + 1] * eri
+                    Atomix.@atomic fock[jj * nat_i + ll + 1] += -dens[ii * nat_i + kk + 1] * eri
                 end
-
-                i == j && (eri *= T(0.5))
-                k == l && (eri *= T(0.5))
-                (i == k && j == l) && (eri *= T(0.5))
-
-                four = T(4.0)
-                Atomix.@atomic fock[i * nat + j + U1] += dens[k * nat + l + U1] * eri * four
-                Atomix.@atomic fock[k * nat + l + U1] += dens[i * nat + j + U1] * eri * four
-                Atomix.@atomic fock[i * nat + k + U1] += -dens[j * nat + l + U1] * eri
-                Atomix.@atomic fock[i * nat + l + U1] += -dens[j * nat + k + U1] * eri
-                Atomix.@atomic fock[j * nat + k + U1] += -dens[i * nat + l + U1] * eri
-                Atomix.@atomic fock[j * nat + l + U1] += -dens[i * nat + k + U1] * eri
             end
         end
     end
