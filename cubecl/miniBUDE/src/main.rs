@@ -23,7 +23,6 @@ use backend::BACKEND_LABEL;
 use bude::{fasten, rates, Elem};
 use cli::{Args, Precision};
 use backend::Client;
-use cubecl::prelude::*;
 use deck::Deck;
 use metrics::{compare_to_deck, compute_metrics};
 use report::{ConfigResult, EnergyReport, Meta, RunReport};
@@ -90,9 +89,10 @@ fn run<F: Elem>(args: &Args, deck: &Deck) {
         .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)));
     let client = backend::client(&device);
     let props = client.properties();
-    if !props.supports_type(F::as_type_native().expect("native element type")) {
-        fail(&format!("{} is not supported on this device", F::PRECISION));
-    }
+    // CubeCL 0.10 omits f64 from the HIP runtime's advertised supported-type
+    // list even on devices such as MI300A that execute generated double kernels.
+    // Do not reject a precision from metadata; let compilation or launch report
+    // a real backend failure instead.
 
     let (configs, mut notes) = runnable_configs(args, deck.nposes(), &client);
     if configs.is_empty() {
@@ -100,11 +100,7 @@ fn run<F: Elem>(args: &Args, deck: &Deck) {
     }
 
     // A float32 run is compared against the same energies computed in float64.
-    let mut differential = F::BITS != 64;
-    if differential && !props.supports_type(f64::as_type_native().expect("native f64 type")) {
-        differential = false;
-        notes.push("float64 is not supported on this device, so there is no fp64 reference pass".into());
-    }
+    let differential = F::BITS != 64;
 
     let (device, name_note) = backend::resolve_name(args.device_index, &client);
     notes.extend(name_note);
