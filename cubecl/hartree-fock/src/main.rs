@@ -22,8 +22,6 @@ mod report;
 use backend::BACKEND_LABEL;
 use cli::{Args, Check, Precision};
 use backend::{BackendRuntime, Client};
-use cubecl::features::AtomicUsage;
-use cubecl::ir::StorageType;
 use cubecl::prelude::*;
 use energy::EnergyProfiler;
 use hf::{Consts, Problem, Real};
@@ -48,22 +46,6 @@ fn list_devices() {
     }
     for (i, _device) in devices.iter().enumerate() {
         println!("  {}: {}", i, backend::placeholder_name(i));
-    }
-}
-
-/// Fails unless the device supports `F` and atomic adds on it.
-fn validate_device<F: Elem>(client: &Client) {
-    let props = client.properties();
-    let native = F::as_type_native().expect("native element type");
-    if !props.supports_type(native) {
-        fail(&format!("{} is not supported on this device", F::NAME));
-    }
-    let atomic = Type::new(StorageType::Atomic(native.elem_type()));
-    if !props.atomic_type_usage(atomic).contains(AtomicUsage::Add) {
-        fail(&format!(
-            "this device does not support atomic add on {}, which the Fock build needs",
-            F::NAME
-        ));
     }
 }
 
@@ -152,7 +134,6 @@ fn run<F: Elem>(args: &Args) {
     let device = backend::device(args.device_index)
         .unwrap_or_else(|e| fail(&format!("device {}: {}", args.device_index, e)));
     let client = backend::client(&device);
-    validate_device::<F>(&client);
     let n_blks = validate_launch(nnnn, args.block_size, &client);
 
     let props = client.properties();
