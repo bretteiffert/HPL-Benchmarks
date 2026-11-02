@@ -148,17 +148,50 @@ esac
 failure_count=0
 
 append_rows() {
-  local source_file="$1" destination_file="$2" expected_header="$3" repetition="$4"
-  local actual_header line row_count=0
-  IFS= read -r actual_header < "$source_file" || return 1
-  [[ "$actual_header" == "$expected_header" ]] || return 1
-  while IFS= read -r line; do
-    if [[ -n "$line" ]]; then
-      printf '%s,%s\n' "$line" "$repetition" >> "$destination_file"
-      row_count=$((row_count + 1))
-    fi
-  done < <(tail -n +2 "$source_file")
-  [[ "$row_count" -gt 0 ]]
+  local source_file="$1" destination_file="$2" expected_header="$3" repetition="$4" implementation="$5"
+  python3 - "$source_file" "$destination_file" "$expected_header" "$repetition" "$implementation" <<'PY'
+import csv
+import sys
+
+source, destination, expected_text, repetition, implementation = sys.argv[1:]
+expected = expected_text.split(",")
+legacy_headers = [
+    [field for field in expected if field != "dot_group_size"],
+    [field for field in expected if field not in ("dot_group_size", "dot_groups")],
+]
+
+with open(source, newline="", encoding="utf-8") as handle:
+    reader = csv.DictReader(handle)
+    accepted = [expected]
+    if implementation == "native":
+        accepted.extend(legacy_headers)
+    if reader.fieldnames not in accepted:
+        raise SystemExit(1)
+    rows = list(reader)
+
+if not rows:
+    raise SystemExit(1)
+
+normalized_rows = []
+for row in rows:
+    if None in row or any(row.get(field) is None for field in reader.fieldnames):
+        raise SystemExit(1)
+    normalized = {field: row.get(field, "") for field in expected}
+    if not normalized["dot_group_size"]:
+        normalized["dot_group_size"] = normalized["block_size"]
+    if implementation == "native":
+        normalized["implementation"] = "Native"
+    normalized["repetition"] = repetition
+    normalized_rows.append(normalized)
+
+with open(destination, "a", newline="", encoding="utf-8") as handle:
+    writer = csv.DictWriter(
+        handle,
+        fieldnames=expected + ["repetition"],
+        lineterminator="\n",
+    )
+    writer.writerows(normalized_rows)
+PY
 }
 
 run_one() {
@@ -206,7 +239,7 @@ run_one() {
   if ! "${command[@]}" "${args[@]}" > "$csv_file" 2>> "$log_file"; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=command_failed log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
-  elif ! append_rows "$csv_file" "$aggregate" "$expected_header" "$repetition"; then
+  elif ! append_rows "$csv_file" "$aggregate" "$expected_header" "$repetition" "$implementation"; then
     echo "rep=$repetition mode=$run_mode implementation=$implementation precision=$run_precision reason=invalid_csv log=$log_file" >> "$failures_file"
     failure_count=$((failure_count + 1))
   fi
