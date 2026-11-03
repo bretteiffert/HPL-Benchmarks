@@ -50,11 +50,11 @@ SIZE_CONFIGS=(
 
 first=1
 for size in "${SIZE_CONFIGS[@]}"; do
-  echo "babelstream - Mojo, ${BACKEND^^}: -s $size -n 1000" >&2
+  echo "babelstream - Mojo, ${BACKEND^^}: -s $size -n 1250" >&2
   if [ "$CSV_MODE" -eq 1 ] && [ "$first" -eq 0 ]; then
-    run_one -s "$size" -n 1000 "$@" | tail -n +2
+    run_one -s "$size" -n 1250 "$@" | tail -n +2
   else
-    run_one -s "$size" -n 1000 "$@"
+    run_one -s "$size" -n 1250 "$@"
   fi
   first=0
 done

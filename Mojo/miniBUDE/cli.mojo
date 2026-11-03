@@ -33,7 +33,7 @@ struct Args(Copyable):
 
     def __init__(out self):
         self.deck_dir = String(DEFAULT_DATA_DIR)
-        self.iterations = 8
+        self.iterations = 500
         self.warmup = 2
         self.nposes = 0
         self.ppwis = [1]
@@ -62,7 +62,7 @@ Options:
   -d, --device INDEX       Device to run on; the energy profiler samples the
                            same index (default: 0)
       --deck DIR           Input deck directory (default: """ + DEFAULT_DATA_DIR + """)
-  -i, --iter I             Timed launches per configuration (default: 8)
+  -i, --iter I             Timed launches per configuration (default: 500)
       --warmup N           Untimed launches before them (default: 2)
   -n, --poses N            Compute only the first N poses; 0 = all (default: 0)
   -p, --ppwi N             Pinned poses per work-item; N must be 1

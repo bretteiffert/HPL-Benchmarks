@@ -24,7 +24,7 @@ Precision is selected at run time with a flag:
 --half     # fp16, grids of at most 105 per side
 ```
 
-Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-point program), `-n` timed iterations (100, after 1 untimed run), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. Triton uses 8 warps on CUDA and 4 waves on HIP. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-point program), `-n` timed iterations (1000, after 1 untimed run), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. Triton uses 8 warps on CUDA and 4 waves on HIP. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

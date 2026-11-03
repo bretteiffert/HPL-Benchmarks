@@ -14,7 +14,7 @@ struct Options
   std::string input;                    // positional input file
   Precision precision = Precision::Double;
   SqrtMode sqrt_mode = SqrtMode::Native;
-  int num_times = 10;                   // timed builds, after 1 untimed build
+  int num_times = 30;                   // timed builds, after 1 untimed build
   int device = 0;
   int block_size = 256;
   OutputMode output = OutputMode::Text;

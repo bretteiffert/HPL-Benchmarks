@@ -12,7 +12,7 @@ const DEFAULT_DECK = normpath(joinpath(@__DIR__, "..", "..", "data", "miniBUDE",
 const PPWIS = (1, 2, 4, 8, 16, 32, 64, 128)
 
 Base.@kwdef mutable struct Args
-    iterations::Int = 8
+    iterations::Int = 500
     warmup::Int = 2
     poses::Int = 0                     # 0 = all poses in the deck
     ppwi::Vector{Int} = [1]
@@ -116,7 +116,7 @@ function print_help(io::IO = stdout)
     pinned to PPWI 1 and work-group size 256.
 
     Options:
-      -i, --iter N           timed iterations (default 8)
+      -i, --iter N           timed iterations (default 500)
           --warmup N         warm-up iterations, excluded from everything (default 2)
       -n, --poses N          poses to use (default: all poses in the deck)
       -p, --ppwi N           pinned poses per work-item; N must be 1

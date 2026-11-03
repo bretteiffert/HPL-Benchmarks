@@ -36,7 +36,7 @@ first=1
 for size in "${SIZES[@]}"; do
   echo "run.sh: $backend, array size $size" >&2
   cmd=("$JULIA" --project="$PROJECT" -O3 --check-bounds=no "$ROOT/main.jl"
-       -s "$size" -n 1000 "$@")
+       -s "$size" -n 1250 "$@")
   if [[ $csv -eq 1 && $first -eq 0 ]]; then
     "${cmd[@]}" | tail -n +2        # CSV header only once across the sweep
   else

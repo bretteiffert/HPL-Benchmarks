@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hartree-Fock (CUDA) sweep: he16, he32, he64, he128, he256 at -n 10.
+# Hartree-Fock (CUDA) sweep: he16, he32, he64, he128, he256 at -n 30.
 #
 #   bash run.sh [extra args passed to every run]
 #
@@ -16,6 +16,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 INPUT_DIR="$SCRIPT_DIR/../../data/hartree-fock"
 
 echo "hartree-fock (CUDA): building" >&2
+make -C "$SCRIPT_DIR" clean >&2
 make -C "$SCRIPT_DIR" >&2
 
 binary="$SCRIPT_DIR/hartree-fock-cuda"
@@ -38,11 +39,11 @@ SIZE_CONFIGS=(
 first=1
 for size in "${SIZE_CONFIGS[@]}"; do
   input="$INPUT_DIR/$size"
-  echo "hartree-fock (CUDA): $size -n 10 $*" >&2
+  echo "hartree-fock (CUDA): $size -n 30 $*" >&2
   if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
-    "$binary" "$input" -n 10 --block-size 256 "$@" | tail -n +2
+    "$binary" "$input" -n 30 --block-size 256 "$@" | tail -n +2
   else
-    "$binary" "$input" -n 10 --block-size 256 "$@"
+    "$binary" "$input" -n 30 --block-size 256 "$@"
   fi
   first=0
 done

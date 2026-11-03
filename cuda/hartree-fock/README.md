@@ -20,7 +20,7 @@ Precision is selected at run time with a flag:
     --double   # fp64, the default
     --float    # fp32
 
-Other options: `-n NUM` timed builds after one untimed build (default 10), `--block-size 256` (the pinned value), `--device INDEX`, `--list`, `--check` / `--no-check` / `--max-check-atoms N` (the fp64 CPU reference runs automatically up to 128 atoms), `--csv`, `--csv-raw`, `--no-energy`. The pinned configuration uses native-precision square roots. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+Other options: `-n NUM` timed builds after one untimed build (default 30), `--block-size 256` (the pinned value), `--device INDEX`, `--list`, `--check` / `--no-check` / `--max-check-atoms N` (the fp64 CPU reference runs automatically up to 128 atoms), `--csv`, `--csv-raw`, `--no-energy`. The pinned configuration uses native-precision square roots. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
 Timed builds add into the same Fock matrix, as in the original benchmark; the 2e- energy checksum and the correctness check use the untimed first build.
 
@@ -30,7 +30,7 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    ./hartree-fock-cuda ../../data/hartree-fock/he64 -n 10
+    ./hartree-fock-cuda ../../data/hartree-fock/he64 -n 30
 
 Run the sweep
 

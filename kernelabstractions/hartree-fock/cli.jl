@@ -6,7 +6,7 @@ Base.@kwdef mutable struct Options
     input::String = ""                     # positional input file
     precision::Precision = PrecisionDouble
     sqrt_mode::SqrtMode = SqrtNative
-    num_times::Int = 10                    # timed builds, after 1 untimed build
+    num_times::Int = 30                    # timed builds, after 1 untimed build
     device::Int = 0
     block_size::Int = 256
     output::OutputMode = OutputText
@@ -151,7 +151,7 @@ function help_text(program::AbstractString)::String
            "INPUT is a geometry file, e.g. ../../data/hartree-fock/he64.\n" *
            "\n" *
            "Options:\n" *
-           "  -n, --iters NUM        timed Fock builds after one untimed build (default 10)\n" *
+           "  -n, --iters NUM        timed Fock builds after one untimed build (default 30)\n" *
            "      --double           float64 (default)\n" *
            "      --float            float32\n" *
            "      --block-size N     pinned threads per block; N must be 256 (default 256)\n" *
@@ -169,7 +169,7 @@ function help_text(program::AbstractString)::String
            "\n" *
            "The pinned configuration uses native-precision square roots. The last\n" *
            "precision flag wins. Options take their value as a separate\n" *
-           "argument (-n 10, not --iters=10). Timed builds add into the same Fock\n" *
+           "argument (-n 30, not --iters=10). Timed builds add into the same Fock\n" *
            "matrix; the checksum and the check use the untimed first build.\n" *
            "\n" *
            "Environment (all optional):\n" *

@@ -2,7 +2,7 @@
 the upstream miniBUDE names."""
 
 PPWIS = (1, 2, 4, 8, 16, 32, 64, 128)
-DEFAULT_ITERS = 8
+DEFAULT_ITERS = 500
 DEFAULT_WARMUP = 2
 DEFAULT_ROWS = 8
 DEFAULT_DECK = "../../data/miniBUDE/bm1"   # relative to this file's folder

@@ -10,7 +10,7 @@ end
 
 Base.@kwdef mutable struct Args
     array_size::Int = 33_554_432
-    num_times::Int = 1000
+    num_times::Int = 1250
     precision::Symbol = :double        # :double | :float | :half
     block_size::Int = 256
     device::Int = 0
@@ -88,7 +88,7 @@ function print_help(io::IO = stdout)
     Options:
       -s, --arraysize SIZE   elements per array (default 33554432)
       -n, --numtimes NUM     iterations, NUM >= 2; the first is a warm-up and is
-                             excluded from statistics, CSV and energy (default 1000)
+                             excluded from statistics, CSV and energy (default 1250)
           --double           float64 (default)
           --float            float32
           --half             float16

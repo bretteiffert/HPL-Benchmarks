@@ -21,7 +21,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16; up to 105 points per side, where the centre coefficient fits in fp16
 
-Other options: `-s L` for an L × L × L grid (default 1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-thread shape), `-n NUM` timed runs after one untimed run (default 100), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+Other options: `-s L` for an L × L × L grid (default 1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-thread shape), `-n NUM` timed runs after one untimed run (default 1000), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
 Bandwidth uses the theoretical traffic: every point is read except the 8 corners and 12 edges, and every interior point is written. The correctness check compares the interior with the exact Laplacian 3.
 

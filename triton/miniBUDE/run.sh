@@ -25,6 +25,6 @@ echo "miniBUDE - Triton, $backend" >&2
 echo "installing the '$backend' environment" >&2
 pixi install --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" 1>&2
 
-echo "running --deck bm1 --float -p 1 -w 256 --warmup 2 -i 8 $*" >&2
+echo "running --deck bm1 --float -p 1 -w 256 --warmup 2 -i 500 $*" >&2
 pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" \
-  python "$SCRIPT_DIR/main.py" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 8 "$@"
+  python "$SCRIPT_DIR/main.py" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 500 "$@"

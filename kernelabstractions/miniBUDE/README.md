@@ -27,7 +27,7 @@ Precision is selected at run time with a flag:
     --float    # fp32, the default; one untimed fp64 pass is run as the reference
     --double   # optional fp64 mode
 
-The launch is pinned to `-p 1 -w 256`; other values are rejected. Other options include `-i` timed iterations (8), `--warmup` (2), `-n` poses (all), `--deck`, `-o`, `-r`, `-d`/`--device`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
+The launch is pinned to `-p 1 -w 256`; other values are rejected. Other options include `-i` timed iterations (500), `--warmup` (2), `-n` poses (all), `--deck`, `-o`, `-r`, `-d`/`--device`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

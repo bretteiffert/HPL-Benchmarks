@@ -25,7 +25,7 @@ Precision is selected at run time with a flag:
 --double   # optional fp64 mode
 ```
 
-The launch is pinned to `-p 1 -w 256`, which gives 8 CUDA warps or 4 HIP waves; Triton's pipeline is pinned to `num_stages=3`. Other PPWI, work-group, and stage values are not tuned. Other options include `-i` timed iterations (8), `--warmup` (2), `-n` poses (0 = whole deck), `--deck`, `-o`, `-r`, `-d`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
+The launch is pinned to `-p 1 -w 256`, which gives 8 CUDA warps or 4 HIP waves; Triton's pipeline is pinned to `num_stages=3`. Other PPWI, work-group, and stage values are not tuned. Other options include `-i` timed iterations (500), `--warmup` (2), `-n` poses (0 = whole deck), `--deck`, `-o`, `-r`, `-d`, `--list`, `--csv`, `--csv-raw`, and `--no-energy`.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

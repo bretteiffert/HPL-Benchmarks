@@ -32,4 +32,4 @@ echo "run.sh: preparing $PROJECT" >&2
 
 echo "run.sh: $backend, deck bm1, float32, ppwi 1, wgsize 256" >&2
 "$JULIA" --project="$PROJECT" -O3 --check-bounds=no "$ROOT/main.jl" \
-  --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 8 "$@"
+  --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 500 "$@"

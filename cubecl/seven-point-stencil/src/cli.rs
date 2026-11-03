@@ -11,7 +11,7 @@ pub enum Precision {
 
 pub const DEFAULT_SIZE: u32 = 1024;
 pub const DEFAULT_BLOCK: (u32, u32, u32) = (64, 4, 1);
-pub const DEFAULT_NUM_TIMES: u32 = 100;
+pub const DEFAULT_NUM_TIMES: u32 = 1000;
 
 pub struct Args {
     pub list: bool,

@@ -29,6 +29,6 @@ case "$BACKEND" in
     ;;
 esac
 
-echo "miniBUDE - Mojo, ${BACKEND^^}: bm1, --float -p 1 -w 256 --warmup 2 -i 8" >&2
+echo "miniBUDE - Mojo, ${BACKEND^^}: bm1, --float -p 1 -w 256 --warmup 2 -i 500" >&2
 pixi run --manifest-path "$SCRIPT_DIR" mojo run -D "BACKEND=$BACKEND" \
-  "$SCRIPT_DIR/main.mojo" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 8 "$@"
+  "$SCRIPT_DIR/main.mojo" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 500 "$@"

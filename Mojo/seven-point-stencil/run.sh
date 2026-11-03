@@ -34,4 +34,4 @@ run_one() {
 }
 
 echo "stencil - Mojo, ${BACKEND^^}: -s 1024 --block-size 64,4,1" >&2
-run_one -s 1024 --block-size 64,4,1 -n 100 "$@"
+run_one -s 1024 --block-size 64,4,1 -n 1000 "$@"

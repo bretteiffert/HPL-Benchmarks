@@ -40,14 +40,14 @@ pixi install --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" 1>&2
 first=1
 for size in "${SIZE_CONFIGS[@]}"; do
   input="$INPUT_DIR/$size"
-  echo "running $size -n 10 $*" >&2
+  echo "running $size -n 30 $*" >&2
   if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
     # CSV header once across the sweep.
     pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" \
-      python "$SCRIPT_DIR/main.py" "$input" -n 10 --block-size 256 "$@" | tail -n +2
+      python "$SCRIPT_DIR/main.py" "$input" -n 30 --block-size 256 "$@" | tail -n +2
   else
     pixi run --manifest-path "$SCRIPT_DIR/pixi.toml" -e "$backend" \
-      python "$SCRIPT_DIR/main.py" "$input" -n 10 --block-size 256 "$@"
+      python "$SCRIPT_DIR/main.py" "$input" -n 30 --block-size 256 "$@"
   fi
   first=0
 done

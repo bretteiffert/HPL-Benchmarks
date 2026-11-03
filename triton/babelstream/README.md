@@ -24,7 +24,7 @@ Precision is selected at run time with a flag:
 --half     # fp16
 ```
 
-Other options: `-s` array size (33,554,432), `-n` iterations (1000, the first is warm-up), `--block-size 256` (the pinned value), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver. `FMAD` is reported but has no effect: Triton fuses multiply-add by default.
+Other options: `-s` array size (33,554,432), `-n` iterations (1250, the first is warm-up), `--block-size 256` (the pinned value), `--device`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver. `FMAD` is reported but has no effect: Triton fuses multiply-add by default.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 
@@ -33,7 +33,7 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 Run one
 
 ```sh
-FMAD=1 pixi run -e cuda python main.py -s 33554432 -n 1000
+FMAD=1 pixi run -e cuda python main.py -s 33554432 -n 1250
 ```
 
 Run the sweep
@@ -47,7 +47,7 @@ bash run.sh cuda
 Run one
 
 ```sh
-FMAD=1 pixi run -e hip python main.py -s 33554432 -n 1000
+FMAD=1 pixi run -e hip python main.py -s 33554432 -n 1250
 ```
 
 Run the sweep

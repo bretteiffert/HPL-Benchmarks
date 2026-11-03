@@ -36,7 +36,7 @@ Other options:
 ```bash
 --deck DIR           # input deck (default ../../data/miniBUDE/bm1)
 -n, --poses N        # use the first N poses (default 0 = all)
--i, --iter I         # timed iterations per combination (default 8)
+-i, --iter I         # timed iterations per combination (default 500)
 --warmup W           # untimed iterations before them (default 2)
 -r, --rows N         # pose energies to show (default 8)
 -o, --out PATH       # save all pose energies to PATH

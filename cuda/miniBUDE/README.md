@@ -20,7 +20,7 @@ Precision is selected at run time with a flag:
     --float    # fp32, the default; one untimed fp64 pass is run as the reference
     --double   # optional fp64 mode
 
-The canonical launch configuration is pinned to `-p 1 -w 256`; other PPWI or work-group values are rejected. Other options keep the upstream names: `--deck DIR`, `-i` timed iterations (default 8), `--warmup N` (default 2), `-n` poses (0 for all), `-d` device index or name substring, `-o` output energies, and `-r` energies shown in the report. Also `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+The canonical launch configuration is pinned to `-p 1 -w 256`; other PPWI or work-group values are rejected. Other options keep the upstream names: `--deck DIR`, `-i` timed iterations (default 500), `--warmup N` (default 2), `-n` poses (0 for all), `-d` device index or name substring, `-o` output energies, and `-r` energies shown in the report. Also `--list`, `--csv`, `--csv-raw`, `--no-energy`. `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

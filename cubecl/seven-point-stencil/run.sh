@@ -29,6 +29,7 @@ export CC=gcc CXX=g++
 echo "Seven-point stencil - CubeCL, ${backend^^}" >&2
 
 # Build once up front so compiler output doesn't interleave with results.
+cargo clean >&2
 cargo build --release --no-default-features --features "$backend" >&2
 
 cargo run --quiet --release --no-default-features --features "$backend" -- \

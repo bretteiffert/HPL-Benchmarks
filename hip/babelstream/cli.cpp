@@ -119,7 +119,7 @@ std::string help_text(const char* program)
     << "Options:\n"
     << "  -s, --arraysize SIZE   elements per array (default 33554432)\n"
     << "  -n, --numtimes NUM     iterations, NUM >= 2; the first is warm-up and\n"
-    << "                         excluded from statistics, CSV and energy (default 1000)\n"
+    << "                         excluded from statistics, CSV and energy (default 1250)\n"
     << "      --double           float64 (default)\n"
     << "      --float            float32\n"
     << "      --half             float16 (values decay below the fp16 range after\n"

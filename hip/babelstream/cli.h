@@ -13,7 +13,7 @@ struct Options
 {
   Precision precision = Precision::Double;
   long long array_size = 33554432;     // 2^25 elements
-  unsigned int num_times = 1000;       // first iteration is warm-up
+  unsigned int num_times = 1250;       // first iteration is warm-up
   int device = 0;
   int block_size = 256;
   bool mibibytes = false;              // text report only; CSV is always GB/s

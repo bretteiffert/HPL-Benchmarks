@@ -1,6 +1,6 @@
 """Command-line parsing and --help for Hartree-Fock (Triton)."""
 
-DEFAULT_NUM_TIMES = 10
+DEFAULT_NUM_TIMES = 30
 DEFAULT_BLOCK_SIZE = 256
 DEFAULT_MAX_CHECK_ATOMS = 128
 

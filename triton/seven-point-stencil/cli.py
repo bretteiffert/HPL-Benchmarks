@@ -1,7 +1,7 @@
 """Command-line parsing and --help for the seven-point stencil (Triton)."""
 
 DEFAULT_SIZE = 1024
-DEFAULT_NUM_TIMES = 100
+DEFAULT_NUM_TIMES = 1000
 DEFAULT_BLOCK = (64, 4, 1)
 
 

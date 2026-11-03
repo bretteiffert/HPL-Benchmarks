@@ -10,6 +10,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "stencil (CUDA): building" >&2
+make -C "$SCRIPT_DIR" clean >&2
 make -C "$SCRIPT_DIR" >&2
 
 binary="$SCRIPT_DIR/laplacian_kernel"

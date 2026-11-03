@@ -25,7 +25,7 @@ struct Args(Copyable):
 
     def __init__(out self):
         self.input = ""
-        self.num_times = 10
+        self.num_times = 30
         self.device_index = 0
         self.block_size = 256
         self.precision = "float64"

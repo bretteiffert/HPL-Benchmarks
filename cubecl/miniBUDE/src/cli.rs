@@ -10,7 +10,7 @@ pub enum Precision {
     Float64,
 }
 
-pub const DEFAULT_ITERS: usize = 8;
+pub const DEFAULT_ITERS: usize = 500;
 pub const DEFAULT_WARMUP: usize = 2;
 pub const DEFAULT_ROWS: usize = 8;
 pub const DEFAULT_DECK: &str = "../../data/miniBUDE/bm1";

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BabelStream (HIP) sweep: 65,536 / 1,048,576 / 33,554,432 elements at -n 1000.
+# BabelStream (HIP) sweep: 65,536 / 1,048,576 / 33,554,432 elements at -n 1250.
 #
 #   bash run.sh [extra args passed to every run]
 #
@@ -14,6 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "babelstream (HIP): building" >&2
+make -C "$SCRIPT_DIR" clean >&2
 make -C "$SCRIPT_DIR" >&2
 
 binary="$SCRIPT_DIR/babelstream_hip"
@@ -33,11 +34,11 @@ SIZE_CONFIGS=(
 
 first=1
 for size in "${SIZE_CONFIGS[@]}"; do
-  echo "babelstream (HIP): -s $size -n 1000 $*" >&2
+  echo "babelstream (HIP): -s $size -n 1250 $*" >&2
   if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
-    "$binary" -s "$size" -n 1000 "$@" | tail -n +2
+    "$binary" -s "$size" -n 1250 "$@" | tail -n +2
   else
-    "$binary" -s "$size" -n 1000 "$@"
+    "$binary" -s "$size" -n 1250 "$@"
   fi
   first=0
 done

@@ -136,7 +136,7 @@ std::string help_text(const char* program)
     << "\n"
     << "Options:\n"
     << "      --deck DIR         input deck directory (default " << DATA_DIR << ")\n"
-    << "  -i, --iter I           timed launches per configuration (default 8)\n"
+    << "  -i, --iter I           timed launches per configuration (default 500)\n"
     << "      --warmup N         untimed launches before them (default 2)\n"
     << "  -n, --poses N          poses to compute, 0 for all in the deck (default 0)\n"
     << "  -p, --ppwi N           pinned poses per work-item; N must be 1 (default 1)\n"

@@ -10,7 +10,7 @@ end
 
 Base.@kwdef mutable struct Args
     grid::NTuple{3,Int} = (1024, 1024, 1024)
-    num_times::Int = 100
+    num_times::Int = 1000
     precision::Symbol = :double        # :double | :float | :half
     block::NTuple{3,Int} = (64, 4, 1)
     device::Int = 0
@@ -100,7 +100,7 @@ function print_help(io::IO = stdout)
     Options:
       -s, --size L           cubic grid L × L × L, L >= 3 (default 1024)
           --grid X,Y,Z       non-cubic grid, each >= 3 (last of -s/--grid wins)
-      -n NUM                 timed iterations after 1 untimed run (default 100)
+      -n NUM                 timed iterations after 1 untimed run (default 1000)
           --double           float64 (default)
           --float            float32
           --half             float16 (only while 2·Σ(n-1)² <= 65,504, i.e. L <= 105)

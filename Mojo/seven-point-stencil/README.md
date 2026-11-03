@@ -20,7 +20,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16, only for small grids (up to 105 points per side for a cube)
 
-Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-thread shape), `-n` timed iterations (100, after 1 untimed run), `--device INDEX`, `--list`, `--mibibytes`, `--csv`, `--csv-raw`, `--no-energy`. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
+Other options: `-s L` cubic grid (1024) or `--grid X,Y,Z`, `--block-size 64,4,1` (the pinned 256-thread shape), `-n` timed iterations (1000, after 1 untimed run), `--device INDEX`, `--list`, `--mibibytes`, `--csv`, `--csv-raw`, `--no-energy`. Optional environment variables `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver.
 
 In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> results.csv` gives a clean file. Run `--help` for the full list.
 

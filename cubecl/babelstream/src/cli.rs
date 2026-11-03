@@ -28,7 +28,7 @@ impl Default for Args {
         Self {
             list: false,
             array_size: 33_554_432,
-            num_times: 1000,
+            num_times: 1250,
             device_index: 0,
             block_size: DEFAULT_BLOCK_SIZE,
             precision: Precision::Float64,
@@ -48,7 +48,7 @@ fn print_help(prog: &str) {
     println!("      --device     INDEX   Select device at INDEX (default 0)");
     println!("  -s  --arraysize  SIZE    Use SIZE elements per array (default 33554432);");
     println!("                           must be a multiple of the block size");
-    println!("  -n  --numtimes   NUM     Run the test NUM times, NUM >= 2 (default 1000);");
+    println!("  -n  --numtimes   NUM     Run the test NUM times, NUM >= 2 (default 1250);");
     println!("                           the first run is excluded from statistics");
     println!(
         "      --block-size SIZE    Pinned units per cube for every kernel; SIZE must be {}",

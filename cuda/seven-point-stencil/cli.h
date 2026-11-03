@@ -14,7 +14,7 @@ struct Options
   Dims grid = {1024, 1024, 1024};      // -s L or --grid X,Y,Z
   Dims block = {64, 4, 1};             // pinned --block-size X[,Y[,Z]]
   Precision precision = Precision::Double;
-  int num_times = 100;                 // timed runs after 1 untimed run
+  int num_times = 1000;                 // timed runs after 1 untimed run
   int device = 0;
   OutputMode output = OutputMode::Text;
   bool energy = true;

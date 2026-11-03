@@ -21,7 +21,7 @@ Precision is selected at run time with a flag:
     --float    # fp32
     --half     # fp16; values decay below the fp16 range after a few hundred iterations, see the correctness notes
 
-Other options: `-s SIZE` elements per array (default 33,554,432), `-n NUM` iterations (default 1000, the first is warm-up), `--block-size 256` (the pinned value), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes` (text report only). `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
+Other options: `-s SIZE` elements per array (default 33,554,432), `-n NUM` iterations (default 1250, the first is warm-up), `--block-size 256` (the pinned value), `--device INDEX`, `--list`, `--csv`, `--csv-raw`, `--no-energy`, `--mibibytes` (text report only). `GPU_NAME` and `GPU_DRIVER` override the reported device name and driver; no environment variables are required.
 
 `FMAD` is a build-time switch (`make EXTRA_FLAGS=-DFMAD=0`). hipcc contracts `a*b+c` into an FMA by default, so it is normally a no-op.
 
@@ -31,7 +31,7 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    ./babelstream_hip -s 33554432 -n 1000
+    ./babelstream_hip -s 33554432 -n 1250
 
 Run the sweep
 

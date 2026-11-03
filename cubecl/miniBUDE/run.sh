@@ -28,7 +28,8 @@ export CC=gcc CXX=g++
 echo "miniBUDE - CubeCL, ${backend^^}" >&2
 
 # Build first so compiler output doesn't interleave with results.
+cargo clean >&2
 cargo build --release --no-default-features --features "$backend" >&2
 
 cargo run --quiet --release --no-default-features --features "$backend" -- \
-  --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 8 "$@"
+  --deck "$DECK" --float -p 1 -w 256 --warmup 2 -i 500 "$@"

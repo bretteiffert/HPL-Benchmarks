@@ -31,7 +31,7 @@ struct Args(Copyable):
         self.block_x = 64
         self.block_y = 4
         self.block_z = 1
-        self.num_times = 100
+        self.num_times = 1000
         self.device_index = 0
         self.precision = "float64"
         self.mibibytes = False

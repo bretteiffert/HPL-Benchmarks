@@ -36,7 +36,7 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 
 Run one
 
-    julia --project=env/cuda -O3 --check-bounds=no main.jl -s 1024 -n 100
+    julia --project=env/cuda -O3 --check-bounds=no main.jl -s 1024 -n 1000
 
 Run the pinned configuration
 
@@ -46,7 +46,7 @@ Run the pinned configuration
 
 Run one
 
-    julia --project=env/hip -O3 --check-bounds=no main.jl -s 1024 -n 100
+    julia --project=env/hip -O3 --check-bounds=no main.jl -s 1024 -n 1000
 
 Run the pinned configuration
 

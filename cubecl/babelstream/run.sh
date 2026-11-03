@@ -33,12 +33,13 @@ export CC=gcc CXX=g++
 echo "babelstream - CubeCL, ${backend^^}" >&2
 
 # Build once up front so compiler output doesn't interleave with results.
+cargo clean >&2
 cargo build --release --no-default-features --features "$backend" >&2
 
 csv_header_done=0
 for size in "${SIZE_CONFIGS[@]}"; do
   out="$(cargo run --quiet --release --no-default-features --features "$backend" -- \
-    -s "$size" -n 1000 "$@")"
+    -s "$size" -n 1250 "$@")"
   # In CSV modes, keep a single header row across sizes.
   if [[ " $* " == *" --csv "* || " $* " == *" --csv-raw "* ]]; then
     if (( csv_header_done )); then

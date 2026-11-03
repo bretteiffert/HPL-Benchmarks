@@ -27,4 +27,4 @@ echo "run.sh: preparing $PROJECT" >&2
 
 echo "run.sh: $backend, grid 1024, block 64,4,1" >&2
 "$JULIA" --project="$PROJECT" -O3 --check-bounds=no "$ROOT/main.jl" \
-  -s 1024 -n 100 --block-size 64,4,1 "$@"
+  -s 1024 -n 1000 --block-size 64,4,1 "$@"

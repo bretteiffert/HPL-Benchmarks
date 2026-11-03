@@ -27,7 +27,7 @@ Other options:
 
 ```bash
 -s, --arraysize SIZE   # elements per array (default 33554432), a multiple of the block size
--n, --numtimes NUM     # iterations (default 1000), the first is excluded from statistics
+-n, --numtimes NUM     # iterations (default 1250), the first is excluded from statistics
 --block-size 256       # pinned units per cube for every kernel
 --device INDEX         # device to run on (default 0); --list shows them
 --csv                  # CSV to stdout: one summary row per routine
@@ -43,7 +43,7 @@ The SM/CU count for the Dot kernel (four workgroups per SM/CU) is read from the 
 Run one
 
 ```bash
-cargo run --release --no-default-features --features cuda -- -s 33554432 -n 1000
+cargo run --release --no-default-features --features cuda -- -s 33554432 -n 1250
 ```
 
 Run the sweep
@@ -57,7 +57,7 @@ bash run.sh cuda
 Run one
 
 ```bash
-cargo run --release --no-default-features --features hip -- -s 33554432 -n 1000
+cargo run --release --no-default-features --features hip -- -s 33554432 -n 1250
 ```
 
 Run the sweep

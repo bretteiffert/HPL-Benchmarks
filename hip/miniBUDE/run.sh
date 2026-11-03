@@ -13,7 +13,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 INPUT_DIR="$SCRIPT_DIR/../../data/miniBUDE/bm1"
 echo "minibude (HIP): building" >&2
+make -C "$SCRIPT_DIR" clean >&2
 make -C "$SCRIPT_DIR" >&2
 
-echo "minibude (HIP): --deck bm1 --float -p 1 -w 256 --warmup 2 -i 8 $*" >&2
-"$SCRIPT_DIR/bude-hip" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 8 "$@"
+echo "minibude (HIP): --deck bm1 --float -p 1 -w 256 --warmup 2 -i 500 $*" >&2
+"$SCRIPT_DIR/bude-hip" --deck "$INPUT_DIR" --float -p 1 -w 256 --warmup 2 -i 500 "$@"

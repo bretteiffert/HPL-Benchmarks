@@ -22,7 +22,7 @@ struct Args(Copyable):
 
     def __init__(out self):
         self.array_size = 33554432
-        self.num_times = 1000
+        self.num_times = 1250
         self.device_index = 0
         self.block_size = 256
         self.precision = "float64"
@@ -48,7 +48,7 @@ Options:
                            (default: 33554432)
   -n, --numtimes NUM       Iterations, NUM >= 2; the first is a warm-up and is
                            excluded from statistics, CSV and energy
-                           (default: 1000)
+                           (default: 1250)
       --block-size SIZE    Pinned threads per block; SIZE must be 256
                            (default: 256)
       --double             float64 (default)

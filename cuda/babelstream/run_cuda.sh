@@ -1,5 +1,8 @@
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
+make -C "$SCRIPT_DIR" clean
+make -C "$SCRIPT_DIR"
+
 echo "babelstream - Native, CUDA"
 
 SIZE_CONFIGS=(
@@ -10,5 +13,5 @@ SIZE_CONFIGS=(
 
 for size in "${SIZE_CONFIGS[@]}"; do
   "$SCRIPT_DIR/babelstream_cuda" \
-    -s "$size" -n 1000
+    -s "$size" -n 1250
 done

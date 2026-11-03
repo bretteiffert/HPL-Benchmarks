@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hartree-Fock (KernelAbstractions) sweep: he16, he32, he64, he128, he256 at -n 10.
+# Hartree-Fock (KernelAbstractions) sweep: he16, he32, he64, he128, he256 at -n 30.
 #
 #   bash run.sh <cuda|hip> [extra args passed to every run]
 #
@@ -60,11 +60,11 @@ SIZE_CONFIGS=(
 first=1
 for size in "${SIZE_CONFIGS[@]}"; do
   input="$INPUT_DIR/$size"
-  echo "hartree-fock (KernelAbstractions, $backend): $size -n 10 $*" >&2
+  echo "hartree-fock (KernelAbstractions, $backend): $size -n 30 $*" >&2
   if [ "$csv" -eq 1 ] && [ "$first" -eq 0 ]; then
-    run_one "$input" -n 10 --block-size 256 "$@" | tail -n +2
+    run_one "$input" -n 30 --block-size 256 "$@" | tail -n +2
   else
-    run_one "$input" -n 10 --block-size 256 "$@"
+    run_one "$input" -n 30 --block-size 256 "$@"
   fi
   first=0
 done

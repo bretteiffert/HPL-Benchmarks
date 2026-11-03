@@ -1,7 +1,7 @@
 """Command-line parsing and --help for BabelStream (Triton)."""
 
 DEFAULT_ARRAY_SIZE = 33554432
-DEFAULT_NUM_TIMES = 1000
+DEFAULT_NUM_TIMES = 1250
 DEFAULT_BLOCK_SIZE = 256
 
 

@@ -34,7 +34,7 @@ The pinned configuration uses native-precision square roots.
 Other options:
 
 ```bash
--n, --numtimes NUM      # timed iterations (default 10), after one untimed run
+-n, --numtimes NUM      # timed iterations (default 30), after one untimed run
 --block-size 256        # pinned units per cube
 --device INDEX          # device to run on (default 0); --list shows them
 --csv                   # CSV to stdout: one summary row
@@ -49,7 +49,7 @@ In the CSV modes only the CSV goes to stdout; the report goes to stderr, so `> r
 Run one
 
 ```bash
-cargo run --release --no-default-features --features cuda -- ../../data/hartree-fock/he64 -n 10
+cargo run --release --no-default-features --features cuda -- ../../data/hartree-fock/he64 -n 30
 ```
 
 Run the input sweep
@@ -63,7 +63,7 @@ bash run.sh cuda
 Run one
 
 ```bash
-cargo run --release --no-default-features --features hip -- ../../data/hartree-fock/he64 -n 10
+cargo run --release --no-default-features --features hip -- ../../data/hartree-fock/he64 -n 30
 ```
 
 Run the sweep

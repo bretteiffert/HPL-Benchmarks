@@ -9,7 +9,7 @@ pub enum Precision {
 }
 
 pub const DEFAULT_BLOCK_SIZE: u32 = 256;
-pub const DEFAULT_NUM_TIMES: u32 = 10;
+pub const DEFAULT_NUM_TIMES: u32 = 30;
 pub const DEFAULT_MAX_CHECK_ATOMS: usize = 128;
 
 /// When to run the fp64 CPU reference check.

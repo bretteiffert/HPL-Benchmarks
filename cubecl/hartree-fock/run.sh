@@ -36,12 +36,13 @@ export CC=gcc CXX=g++
 echo "hartree-fock - CubeCL, ${backend^^}" >&2
 
 # Build once up front so compiler output doesn't interleave with results.
+cargo clean >&2
 cargo build --release --no-default-features --features "$backend" >&2
 
 csv_header_done=0
 for size in "${SIZE_CONFIGS[@]}"; do
   out="$(cargo run --quiet --release --no-default-features --features "$backend" -- \
-    "$INPUT_DIR/$size" -n 10 --block-size 256 "$@")"
+    "$INPUT_DIR/$size" -n 30 --block-size 256 "$@")"
   # In CSV modes, keep a single header row across inputs.
   if [[ " $* " == *" --csv "* || " $* " == *" --csv-raw "* ]]; then
     if (( csv_header_done )); then
