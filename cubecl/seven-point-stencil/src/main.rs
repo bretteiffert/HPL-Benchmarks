@@ -135,7 +135,14 @@ fn run<F: Elem>(args: &Args) {
     let client = backend::client(&device);
     let props = client.properties();
     let hw = &props.hardware;
-    if !props.supports_type(F::as_type_native().expect("native element type")) {
+    // CubeCL 0.10 does not advertise CUDA f64 in its generic supported-type
+    // list because of an unrelated CUDA matmul issue. This benchmark only
+    // uses ordinary scalar loads, stores, and arithmetic, for which CUDA
+    // double precision is supported by the backend.
+    let cuda_fp64_exception = cfg!(feature = "cuda") && F::PRECISION == "float64";
+    if !props.supports_type(F::as_type_native().expect("native element type"))
+        && !cuda_fp64_exception
+    {
         fail(&format!("{} is not supported on this device", F::PRECISION));
     }
 
