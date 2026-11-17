@@ -1,6 +1,10 @@
-# kernels.jl — miniBUDE device code (KernelAbstractions). Unchanged from the
-# original miniBUDE.jl: the kernel was already generic in T (eltype(etotals))
-# and in PPWI (Val), so run-time precision needed no kernel change.
+# kernels.jl — miniBUDE device code (KernelAbstractions). The kernel is the
+# original miniBUDE.jl one: it was already generic in T (eltype(etotals)) and
+# in PPWI (Val), so run-time precision needed no kernel change.
+#
+# One addition: the per-pose closures passed to `ntuple` are marked `@inline`.
+# With CUDA.jl 6.4 the `accumulate_energies` closure is otherwise left as an
+# out-of-line call, once per atom pair in the inner loop.
 
 module Kernels
 
@@ -29,6 +33,7 @@ end
                                   t0, t1, t2, t3, t4, t5,
                                   ix::Int32, lsz::Int32) where {PPWI,T}
     return ntuple(Val(PPWI)) do i
+        @inline
         @inbounds begin
             idx = ix + Int32(i - 1) * lsz
             sx = sin(t0[idx]); cx = cos(t0[idx])
@@ -53,6 +58,7 @@ end
 @inline function ligand_positions(tf::NTuple{PPWI,NTuple{12,T}},
                                   lx::T, ly::T, lz::T) where {PPWI,T}
     return ntuple(Val(PPWI)) do i
+        @inline
         @inbounds tr = tf[i]
         @inbounds (tr[4] + lx * tr[1] + ly * tr[2] + lz * tr[3],
                    tr[8] + lx * tr[5] + ly * tr[6] + lz * tr[7],
@@ -75,6 +81,7 @@ end
     HARDNESS = T(38)
 
     return ntuple(Val(PPWI)) do i
+        @inline
         @inbounds p = lpos[i]
         x = p[1] - px
         y = p[2] - py
@@ -104,6 +111,7 @@ end
 @inline function store_energies!(etotals, etot::NTuple{PPWI,T},
                                  base::Int32, lsz::Int32, half::T) where {PPWI,T}
     ntuple(Val(PPWI)) do i
+        @inline
         @inbounds etotals[base+Int32(i - 1)*lsz] = etot[i] * half
         nothing
     end

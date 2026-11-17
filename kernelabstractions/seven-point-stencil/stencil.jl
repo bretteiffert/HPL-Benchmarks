@@ -39,7 +39,10 @@ function StencilDevice{T}(backend, nx::Int, ny::Int, nz::Int, block::NTuple{3,In
     invhz2 = one(T) / hz / hz
     invhxyz2 = T(-2) * (invhx2 + invhy2 + invhz2)
     ik = test_function_kernel!(backend, block)
-    lk = laplacian_kernel!(backend, block)
+    # Static ndrange: the grid is fixed for this device, and specializing on it
+    # avoids run-time Cartesian-index divisions in KernelAbstractions 0.9's
+    # CUDA launch path.
+    lk = laplacian_kernel!(backend, block, (nx, ny, nz))
     return StencilDevice{T,typeof(backend),typeof(u),typeof(ik),typeof(lk)}(
         backend, u, f, nx, ny, nz, hx, hy, hz, invhx2, invhy2, invhz2, invhxyz2, ik, lk)
 end
@@ -48,8 +51,7 @@ init_field!(s::StencilDevice) =
     s.init_kern(s.u, s.hx, s.hy, s.hz; ndrange = (s.nx, s.ny, s.nz))
 
 laplacian!(s::StencilDevice) =
-    s.lap_kern(s.f, s.u, s.invhx2, s.invhy2, s.invhz2, s.invhxyz2;
-               ndrange = (s.nx, s.ny, s.nz))
+    s.lap_kern(s.f, s.u, s.invhx2, s.invhy2, s.invhz2, s.invhxyz2)
 
 "One timed Laplacian (seconds, device events)."
 timed_laplacian!(s::StencilDevice) = elapsed_seconds(() -> laplacian!(s))
